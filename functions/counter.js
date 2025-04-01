@@ -23,7 +23,7 @@ export async function onRequest(context) {
   let count = 0;
   let responseHeaders = {
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': 'https://swarley.club',
+      'Access-Control-Allow-Origin': '*',
       'Cache-Control': 'no-cache, no-store, must-revalidate',
   };
 
