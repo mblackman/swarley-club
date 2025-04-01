@@ -1,0 +1,255 @@
+/* Basic Reset & Body Styles */
+body {
+    margin: 0;
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 99%, #fad0c4 100%);
+    color: #333;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+    box-sizing: border-box;
+    /* IMPORTANT: Replace with path to your cursor file (e.g., 32x32 .png or .cur) */
+    cursor: url('images/paw-cursor.png'), auto;
+}
+/* Ensure interactive elements use pointer cursor */
+button, a, input, select, textarea {
+    cursor: pointer;
+}
+
+
+/* Main Container */
+.container {
+    background-color: rgba(255, 255, 255, 0.9);
+    padding: 30px 40px;
+    border-radius: 15px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    max-width: 800px;
+    width: 90%;
+}
+
+/* --- Header --- */
+header h1 {
+    font-family: 'Pacifico', cursive;
+    color: #E91E63;
+    font-size: 3em;
+    margin-bottom: 0;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+    /* Animation setup */
+    transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+    opacity: 0; /* Start hidden */
+    transform: scale(0.8); /* Start small */
+}
+/* State for animation trigger */
+header h1.loaded {
+    animation: fadeInScaleUp 0.6s ease-out forwards;
+}
+
+header .subtitle {
+    font-size: 1.2em;
+    color: #555;
+    margin-top: 5px;
+}
+
+/* --- Dog Pictures Area --- */
+.dog-pics {
+    display: flex;
+    justify-content: center;
+    gap: 25px;
+    margin: 30px 0;
+    flex-wrap: wrap;
+}
+
+.dog-pic {
+    max-width: 45%;
+    min-width: 200px;
+    height: auto;
+    border-radius: 10px;
+    border: 5px solid #fff;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    transition: transform 0.3s ease;
+}
+.dog-pic:hover {
+    transform: scale(1.03);
+}
+
+/* --- Join Button --- */
+#joinButton {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    font-size: 1.4em;
+    padding: 15px 30px;
+    background: linear-gradient(45deg, #4CAF50, #8BC34A);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer; /* Already set globally, but good to be specific */
+    transition: background 0.3s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+    margin-top: 20px;
+    display: inline-flex; /* For aligning icons */
+    align-items: center;
+    justify-content: center;
+}
+
+#joinButton:hover {
+    background: linear-gradient(45deg, #388E3C, #689F38);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    /* Wiggle animation on hover */
+    animation: wiggle 0.3s ease-in-out infinite;
+}
+
+#joinButton:active {
+    transform: translateY(1px); /* Push down effect */
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+    animation: none; /* Stop wiggle on click */
+}
+
+#joinButton:focus {
+    outline: 3px solid #0D47A1; /* Distinct blue outline for accessibility */
+    outline-offset: 2px;
+    /* Optional: Add wiggle on focus too */
+    /* animation: wiggle 0.3s ease-in-out infinite; */
+}
+
+/* Icon Styling inside Button */
+#joinButton .icon {
+    display: inline-block;
+    width: 1.2em;
+    height: 1.2em;
+    vertical-align: middle;
+    fill: currentColor; /* Uses button text color (white) */
+}
+#joinButton .icon.paw {
+    margin-right: 0.4em;
+    margin-left: -0.2em; /* Adjust spacing */
+}
+#joinButton .icon.popper {
+    margin-left: 0.4em;
+    margin-right: -0.2em; /* Adjust spacing */
+}
+
+
+/* --- Stats & Facts Section --- */
+.stats {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px dashed #ddd;
+}
+
+#memberCount {
+    font-weight: bold;
+    color: #E91E63; /* Match header color */
+    font-size: 1.1em;
+}
+
+.swarley-fact {
+    margin-top: 10px;
+    font-style: italic;
+    color: #555;
+    min-height: 1.2em; /* Prevent layout jump while loading */
+    opacity: 0; /* Start hidden */
+    transition: opacity 0.5s ease-in;
+}
+
+.swarley-fact.fact-loaded {
+    opacity: 1; /* Fade in when fact is loaded */
+}
+
+/* --- Footer --- */
+footer {
+    margin-top: 40px;
+    font-size: 0.9em;
+    color: #777;
+}
+
+/* --- Keyframe Animations --- */
+@keyframes dance {
+    0% { transform: rotate(-4deg) translateY(0px) scale(1); }
+    25% { transform: rotate(0deg) translateY(-8px) scale(1.02); }
+    50% { transform: rotate(4deg) translateY(0px) scale(1); }
+    75% { transform: rotate(0deg) translateY(-8px) scale(1.02); }
+    100% { transform: rotate(-4deg) translateY(0px) scale(1); }
+}
+
+/* Class to apply the dance animation */
+.dancing {
+    animation: dance 0.6s ease-in-out infinite alternate;
+}
+
+/* Header fade in animation */
+@keyframes fadeInScaleUp {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Button wiggle animation */
+@keyframes wiggle {
+  0%, 100% { transform: rotate(-2deg); } /* Removed translateY for simplicity */
+  50% { transform: rotate(2deg); }
+}
+
+
+/* --- Responsive Adjustments --- */
+@media (max-width: 600px) {
+    /* Adjust container padding */
+    .container {
+        padding: 20px 15px;
+        width: 95%;
+    }
+
+    /* Reduce header size */
+    header h1 {
+        font-size: 2.2em;
+    }
+    header .subtitle {
+        font-size: 1em;
+    }
+
+    /* Stack dog pictures */
+    .dog-pics {
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+    }
+    .dog-pic {
+        max-width: 85%;
+        min-width: 0;
+        border-width: 3px;
+    }
+
+    /* Adjust button size */
+    #joinButton {
+        font-size: 1.2em;
+        padding: 12px 25px;
+    }
+    #joinButton .icon {
+      width: 1em; height: 1em; /* Slightly smaller icon */
+    }
+
+    /* Adjust stats/footer */
+    .stats {
+        margin-top: 20px;
+        padding-top: 15px;
+    }
+    footer {
+        margin-top: 30px;
+        font-size: 0.85em;
+    }
+}
+
+/* Optional: Further adjustments for very small screens */
+@media (max-width: 400px) {
+    header h1 {
+        font-size: 1.8em;
+    }
+    #joinButton {
+        font-size: 1em;
+        padding: 10px 20px;
+    }
+     #joinButton .icon {
+      width: 0.9em; height: 0.9em;
+    }
+}

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swarley's Official Club!</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Poppins:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Swarley's official club</h1> <p class="subtitle">Where every day is a good boy day!</p>
+        </header>
+
+        <main>
+            <div class="dog-pics">
+                <img src="https://placehold.co/300x300/FFC107/FFF?text=Swarley+Pic+1" alt="Picture of Swarley 1" class="dog-pic" id="swarley1">
+                <img src="https://placehold.co/300x300/4CAF50/FFF?text=Swarley+Pic+2" alt="Picture of Swarley 2" class="dog-pic" id="swarley2">
+                </div>
+
+            <button id="joinButton">
+                <svg class="icon paw" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+                    <path d="M256 64C150 64 64 150 64 256s86 192 192 192 192-86 192-192S362 64 256 64zm64 224c-17.7 0-32 14.3-32 32s14.3 32 32 32 32-14.3 32-32-14.3-32-32-32zm-128 0c-17.7 0-32 14.3-32 32s14.3 32 32 32 32-14.3 32-32-14.3-32-32-32zm-88-88c13.3 0 24 10.7 24 24s-10.7 24-24 24-24-10.7-24-24 10.7-24 24-24zm264 48c13.3 0 24-10.7 24-24s-10.7-24-24-24-24 10.7-24 24 10.7 24 24 24zm-176 40c-13.3 0-24-10.7-24-24s10.7-24 24-24 24 10.7 24 24-10.7 24-24 24z"/>
+                </svg>
+                Join the Swarley Club!
+                <svg class="icon popper" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+                   <path d="M406.5 293.5c-1.1-4.5-2.7-8.9-4.5-13.2l-18.3-43.4c-8.4-19.8-29.6-32.2-51.7-30.1l-43 4c-1.5-.2-3-.3-4.5-.3H240c-1.5 0-3 .1-4.5.3l-43-4c-22.1-2.1-43.3 10.3-51.7 30.1l-18.3 43.4c-1.9 4.3-3.4 8.7-4.5 13.2C66.1 324.9 96 368.2 96 416H416c0-47.8 29.9-91.1 70.5-122.5zM272 448c0 17.7-14.3 32-32 32s-32-14.3-32-32H272zm128-64H112c-8.8 0-16-7.2-16-16s7.2-16 16-16h288c8.8 0 16 7.2 16 16s-7.2 16-16 16zM144 32l-10.7 64.3c-1 6 3.1 11.7 9.1 12.7s11.7-3.1 12.7-9.1L166.7 32H144zm112 0l-10.7 64.3c-1 6 3.1 11.7 9.1 12.7s11.7-3.1 12.7-9.1L278.7 32H256zm112 0l-10.7 64.3c-1 6 3.1 11.7 9.1 12.7s11.7-3.1 12.7-9.1L390.7 32H368z"/>
+                </svg>
+            </button>
+
+            <div class="stats">
+                <p>Club Members Joined: <span id="memberCount">Loading...</span></p>
+                <p id="swarleyFact" class="swarley-fact">Loading Swarley wisdom...</p>
+            </div>
+        </main>
+
+        <footer>
+            <p>Unofficially official since whenever Swarley decided. Club Rules: Snacks mandatory.</p>
+        </footer>
+    </div>
+
+    <audio id="barkSound" src="sounds/short-bark.mp3" preload="auto"></audio>
+
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
