@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const clubTitle = document.querySelector('h1');
 
     const localStorageKey = 'swarleyClubJoined'; // Key for localStorage flag
-    const counterApiUrl = '/functions/counter'; // URL for the Cloudflare Worker
+    const counterApiUrl = '/counter'; // URL for the Cloudflare Worker
 
     // --- Swarley Facts ---
     const facts = [
@@ -43,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  throw new Error(`HTTP error! status: ${response.status}`);
             }
             const data = await response.json();
+            console.log("Initial count fetched:", data);
             memberCountSpan.textContent = data.count ?? 'Error';
         } catch (error) {
             console.error("Failed to fetch initial counter:", error);
@@ -88,8 +89,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!localStorage.getItem(localStorageKey)) {
                 // First click in this browser
                 console.log("First join from this browser. Incrementing counter...");
-                localStorage.setItem(localStorageKey, 'true');
                 await incrementAndFetchCounter(); // Call the INCREMENT function
+                localStorage.setItem(localStorageKey, 'true');
             } else {
                 // Repeat click
                 console.log("Already joined from this browser. Animations played, counter not incremented.");

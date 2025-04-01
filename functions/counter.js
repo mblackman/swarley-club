@@ -9,7 +9,8 @@ const counterKey = "join_count"; // Key for KV store
  */
 export async function onRequest(context) {
   const { request, env, waitUntil } = context;
-
+  console.log(`[FUNC LOG] Request received: ${request.method} ${request.url}`);
+  
   // Ensure KV binding is configured
   if (!env.STATS_KV) {
     console.error("KV Namespace 'STATS_KV' is not bound.");
@@ -31,7 +32,7 @@ export async function onRequest(context) {
     // Get the current count first for both methods
     const storedCount = await kv.get(counterKey);
     count = storedCount ? parseInt(storedCount, 10) : 0;
-
+    
     // Check the request method
     if (request.method === 'POST') {
       // --- Increment Logic ---
