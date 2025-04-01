@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Element Selection ---
     const joinButton = document.getElementById('joinButton');
     const dogPics = document.querySelectorAll('.dog-pic');
     const memberCountSpan = document.getElementById('memberCount');
@@ -12,16 +11,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Swarley Facts ---
     const facts = [
-        "Swarley secretly believes the vacuum cleaner is a noisy sheep.",
-        "Swarley has hidden exactly 17 squeaky toys. Location classified.",
-        "Swarley's favorite shape is 'treat'.",
-        "Swarley invented the 'zoomies' as a form of interpretive dance.",
-        "Swarley dreams in smells, mostly of cheese and adventure.",
-        "If Swarley had thumbs, he'd use them for opening treat bags.",
-        "Swarley considers car rides a spectator sport.",
-        "Swarley is fluent in three languages: Tail Wag, Head Tilt, and Sigh.",
-        "Swarley’s official position is Chief Morale Officer.",
-        "Swarley maintains that squirrels are just fuzzy park terrorists."
+        "Accepts pats with tiny, appreciative whimpers.",
+        "A distinguished gentleman rocking the senior dog vibe.",
+        "Finds pure joy frolicking in freshly fallen snow.",
+        "Considers snow and grass to be seasonal delicacies.",
+        "Once cleared a coffee table in a single leap, just because.",
+        "Achieves supersonic flight speeds (only in his dreams).",
+        "Believes water belongs strictly inside the bowl. No exceptions.",
+        "Fondly remembers his 'Era of Maximum Fluffiness'.",
+        "Warning: May cause spontaneous hugging due to extreme natural fluffiness.",
+        "Possesses a signature scent known only as 'Eau de Swarley'.",
+        " A professional cuddler and human bed-warming expert.",
+        "Views overly-fluffy white dogs with deep suspicion.",
+        "Functions as a highly efficient 'love sponge', absorbing all available affection.",
+        "An aspiring interior designer, known for spontaneous bed rearrangement."
     ];
 
     function displayRandomFact() {
@@ -38,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function fetchInitialCount() {
         if (!memberCountSpan) return; // Exit if span not found
         try {
-            const response = await fetch(counterApiUrl, { method: 'GET' }); // Explicitly GET
+            const response = await fetch(counterApiUrl, { method: 'GET' });
             if (!response.ok) {
                  throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -53,9 +56,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Function to increment count via Worker (using POST) and update display
     async function incrementAndFetchCounter() {
-        if (!memberCountSpan) return; // Exit if span not found
+        if (!memberCountSpan) return;
         try {
-            const response = await fetch(counterApiUrl, { method: 'POST' }); // Use POST to signal increment
+            const response = await fetch(counterApiUrl, { method: 'POST' });
             if (!response.ok) {
                  let errorMsg = `HTTP error! status: ${response.status}`;
                 try { const errorData = await response.json(); errorMsg += `, Message: ${errorData.error || 'Unknown KV Error'}`; } catch (e) {/*Ignore*/}
@@ -65,7 +68,6 @@ document.addEventListener('DOMContentLoaded', () => {
             memberCountSpan.textContent = data.count ?? 'Error!';
         } catch (error) {
             console.error("Failed to increment or update counter:", error);
-            // Optionally revert text or show previous known good value if needed
             memberCountSpan.textContent = 'Error!';
         }
     }
@@ -82,14 +84,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // --- Actions to perform on EVERY click ---
             try { confetti({ /* ... confetti options ... */ }); } catch (e) { console.error("Confetti error:", e); }
-            dogPics.forEach(pic => pic.classList.add('dancing'));
+            dogPics.forEach((pic, index) => {
+                if (index % 2 === 0) {
+                    pic.classList.add('dancing-1');
+                } else {
+                    pic.classList.add('dancing-2');
+                }
+            });
             if (barkSound) { try { barkSound.currentTime = 0; await barkSound.play(); } catch (e) { console.error("Audio play failed:", e); } }
 
             // --- Conditional Counter Increment ---
             if (!localStorage.getItem(localStorageKey)) {
                 // First click in this browser
                 console.log("First join from this browser. Incrementing counter...");
-                await incrementAndFetchCounter(); // Call the INCREMENT function
+                await incrementAndFetchCounter();
                 localStorage.setItem(localStorageKey, 'true');
             } else {
                 // Repeat click
@@ -99,12 +107,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // --- Actions after conditional logic ---
             setTimeout(() => {
-                dogPics.forEach(pic => pic.classList.remove('dancing'));
+                dogPics.forEach(pic => {
+                    pic.classList.remove('dancing-1');
+                    pic.classList.remove('dancing-2');
+                });
                 joinButton.disabled = false;
                 console.log("Stopping the dance.");
-            }, 4000); // 4 seconds delay
+            }, 4000);
 
-        }); // End of event listener
+        });
     } else {
         console.error("Join button not found!");
     }

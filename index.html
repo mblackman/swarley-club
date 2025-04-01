@@ -17,9 +17,18 @@
 
         <main>
             <div class="dog-pics">
-                <img src="https://placehold.co/300x300/FFC107/FFF?text=Swarley+Pic+1" alt="Picture of Swarley 1" class="dog-pic" id="swarley1">
-                <img src="https://placehold.co/300x300/4CAF50/FFF?text=Swarley+Pic+2" alt="Picture of Swarley 2" class="dog-pic" id="swarley2">
-                </div>
+                <picture class="dog-pic">
+                    <source srcset="images/swarley-1.webp" type="image/webp">
+                    <source srcset="images/swarley-1.jpg" type="image/jpeg">
+                    <img src="images/swarley-1.jpg" alt="Picture of Swarley 1" id="swarley1">
+                  </picture>
+                  
+                  <picture class="dog-pic">
+                    <source srcset="images/swarley-2.webp" type="image/webp">
+                    <source srcset="images/swarley-2.jpg" type="image/jpeg">
+                    <img src="images/swarley-2.jpg" alt="Picture of Swarley 2" id="swarley2">
+                  </picture>
+            </div>
 
             <button id="joinButton">
                 <svg class="icon paw" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
@@ -33,7 +42,7 @@
 
             <div class="stats">
                 <p>Club Members Joined: <span id="memberCount">Loading...</span></p>
-                <p id="swarleyFact" class="swarley-fact">Loading Swarley wisdom...</p>
+                <p id="swarleyFact" class="swarley-fact"></p>
             </div>
         </main>
 

@@ -9,7 +9,6 @@ const counterKey = "join_count"; // Key for KV store
  */
 export async function onRequest(context) {
   const { request, env, waitUntil } = context;
-  console.log(`[FUNC LOG] Request received: ${request.method} ${request.url}`);
   
   // Ensure KV binding is configured
   if (!env.STATS_KV) {
@@ -24,7 +23,7 @@ export async function onRequest(context) {
   let count = 0;
   let responseHeaders = {
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*', // Adjust if needed
+      'Access-Control-Allow-Origin': 'https://swarley.club',
       'Cache-Control': 'no-cache, no-store, must-revalidate',
   };
 
@@ -35,31 +34,23 @@ export async function onRequest(context) {
     
     // Check the request method
     if (request.method === 'POST') {
-      // --- Increment Logic ---
       count++;
-      // Asynchronously put the new count back into KV.
       waitUntil(kv.put(counterKey, count.toString()));
-      console.log(`Counter incremented to: ${count}`); // Optional server-side log
-      // Return the *newly incremented* count
+      console.log(`Counter incremented to: ${count}`);
       return new Response(JSON.stringify({ count: count }), { headers: responseHeaders });
 
     } else if (request.method === 'GET') {
-      // --- Read-Only Logic ---
-      console.log(`Counter read as: ${count}`); // Optional server-side log
-      // Return the *current* count without incrementing
       return new Response(JSON.stringify({ count: count }), { headers: responseHeaders });
 
     } else {
-      // --- Handle other methods (optional) ---
       return new Response(JSON.stringify({ error: "Method not allowed", count: count }), {
-          status: 405, // Method Not Allowed
+          status: 405,
           headers: responseHeaders,
        });
     }
 
   } catch (error) {
     console.error("KV Operation Error:", error);
-    // Return an error response, potentially with the last known count before error
     return new Response(JSON.stringify({ error: "Could not access or update count", count: count }), {
       status: 500,
       headers: responseHeaders,

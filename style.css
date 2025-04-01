@@ -11,7 +11,7 @@ body {
     padding: 20px;
     box-sizing: border-box;
     /* IMPORTANT: Replace with path to your cursor file (e.g., 32x32 .png or .cur) */
-    cursor: url('images/paw-cursor.png'), auto;
+    cursor: url('images/swarley-paw.png'), auto;
 }
 /* Ensure interactive elements use pointer cursor */
 button, a, input, select, textarea {
@@ -67,10 +67,17 @@ header .subtitle {
     min-width: 200px;
     height: auto;
     border-radius: 10px;
-    border: 5px solid #fff;
+    border: 8px solid #fff;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     transition: transform 0.3s ease;
 }
+
+.dog-pic img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
 .dog-pic:hover {
     transform: scale(1.03);
 }
@@ -166,7 +173,7 @@ footer {
 }
 
 /* --- Keyframe Animations --- */
-@keyframes dance {
+@keyframes dance-1 {
     0% { transform: rotate(-4deg) translateY(0px) scale(1); }
     25% { transform: rotate(0deg) translateY(-8px) scale(1.02); }
     50% { transform: rotate(4deg) translateY(0px) scale(1); }
@@ -174,9 +181,21 @@ footer {
     100% { transform: rotate(-4deg) translateY(0px) scale(1); }
 }
 
+@keyframes dance-2 {
+    0% { transform: rotate(4deg) translateY(0px) scale(1); }
+    25% { transform: rotate(0deg) translateY(-8px) scale(1.02); }
+    50% { transform: rotate(-4deg) translateY(0px) scale(1); }
+    75% { transform: rotate(0deg) translateY(-8px) scale(1.02); }
+    100% { transform: rotate(4deg) translateY(0px) scale(1); }
+}
+
 /* Class to apply the dance animation */
-.dancing {
-    animation: dance 0.6s ease-in-out infinite alternate;
+.dancing-1 {
+    animation: dance-1 0.6s ease-in-out infinite alternate;
+}
+
+.dancing-2 {
+    animation: dance-2 0.6s ease-in-out infinite alternate;
 }
 
 /* Header fade in animation */
@@ -217,7 +236,7 @@ footer {
     .dog-pic {
         max-width: 85%;
         min-width: 0;
-        border-width: 3px;
+        border-width: 8px;
     }
 
     /* Adjust button size */
