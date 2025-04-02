@@ -173,6 +173,14 @@ footer {
     color: #777;
 }
 
+.github-logo {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    padding: 10px;
+    z-index: 1000;
+}
+
 /* --- Keyframe Animations --- */
 @keyframes dance-1 {
     0% { transform: rotate(-4deg) translateY(0px) scale(1); }
