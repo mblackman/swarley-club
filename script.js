@@ -27,12 +27,85 @@ document.addEventListener('DOMContentLoaded', () => {
         "An aspiring interior designer, known for spontaneous bed rearrangement."
     ];
 
+    const allSwarleyPics = [
+        // IMPORTANT: User needs to replace these with REAL paths/URLs and descriptive alt text
+        { src: "images/swarley-1.webp", alt: "Swarley being a gentleman in a suit" },
+        { src: "images/swarley-2.webp", alt: "Swarley's side profile and smile" },
+        { src: "images/swarley-3.webp", alt: "Swarley looking ghastly and cute" },
+        { src: "images/swarley-4.webp", alt: "Swarley prancing through the grass" },
+        { src: "images/swarley-5.webp", alt: "Swarley is a nugget" },
+        { src: "images/swarley-6.webp", alt: "Swarley as a little pup in the car" },
+        { src: "images/swarley-7.webp", alt: "Swarley looking like a disheveled old man" },
+        { src: "images/swarley-8.webp", alt: "Swarley's little feet" },
+        { src: "images/swarley-9.webp", alt: "Swarley looking like a rabid beast" },
+        { src: "images/swarley-10.webp", alt: "Swarley wondering if you got snacks" },
+        { src: "images/swarley-11.webp", alt: "Swarley looking dapper in a bandana" },
+        { src: "images/swarley-12.webp", alt: "Swarley trying his hardest to smile" },
+        { src: "images/swarley-13.webp", alt: "Swarley relaxing" },
+      ];
+
     function displayRandomFact() {
         if (swarleyFactP) {
             const randomIndex = Math.floor(Math.random() * facts.length);
             swarleyFactP.textContent = facts[randomIndex];
             swarleyFactP.classList.add('fact-loaded');
         }
+    }
+
+    function loadSwarleyPics() {
+        const dogPicElements = document.querySelectorAll('.dog-pic img');
+        const numPicsToDisplay = dogPicElements.length;
+      
+        if (dogPicElements.length > 0 && allSwarleyPics.length > 0) {
+           const selectedPics = getRandomPics(allSwarleyPics, numPicsToDisplay);
+      
+           dogPicElements.forEach((imgElement, index) => {
+             if (selectedPics[index]) {
+               // --- If using <picture> element ---
+               const pictureElement = imgElement.closest('.dog-pic');
+               if (pictureElement) {
+                  // Find all <source> elements within the picture
+                  const sources = pictureElement.querySelectorAll('source');
+                  // Get the base filename (without extension)
+                  const baseSrc = selectedPics[index].src.substring(0, selectedPics[index].src.lastIndexOf('.'));
+      
+                  // Update srcset for each source type (webp, avif, jpg etc.)
+                  sources.forEach(source => {
+                      if (source.type === 'image/webp') {
+                          source.srcset = baseSrc + '.webp';
+                      } else if (source.type === 'image/jpeg') {
+                          source.srcset = baseSrc + '.jpg';
+                      }
+                  });
+               }
+               // --- Always update the fallback <img> ---
+               imgElement.src = selectedPics[index].src.replace(/\.\w+$/, '.jpg');
+               imgElement.alt = selectedPics[index].alt;
+               imgElement.style.opacity = 0;
+               imgElement.onload = () => { imgElement.style.opacity = 1; };
+             }
+           });
+        }
+    }
+
+    function getRandomPics(pool, count) {
+        if (count > pool.length) {
+          console.warn("Requested more pictures than available!");
+          count = pool.length;
+        }
+        // Fisher-Yates (Knuth) shuffle algorithm (or simpler method for small counts)
+        const shuffled = pool.slice(); // Create a copy
+        let m = shuffled.length, t, i;
+        // While there remain elements to shuffle…
+        while (m) {
+          // Pick a remaining element…
+          i = Math.floor(Math.random() * m--);
+          // And swap it with the current element.
+          t = shuffled[m];
+          shuffled[m] = shuffled[i];
+          shuffled[i] = t;
+        }
+        return shuffled.slice(0, count); // Return the first 'count' elements
     }
 
     // --- Counter Logic ---
@@ -73,8 +146,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Initial Load Actions ---
-    displayRandomFact(); // Display initial fact
-    fetchInitialCount(); // Fetch and display the current count on page load
+    displayRandomFact();
+    fetchInitialCount();
+    loadSwarleyPics();
 
     // --- Button Click Handler ---
     if (joinButton) {

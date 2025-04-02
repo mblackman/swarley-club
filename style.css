@@ -101,11 +101,12 @@ header .subtitle {
     justify-content: center;
 }
 
-#joinButton:hover {
-    background: linear-gradient(45deg, #388E3C, #689F38);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-    /* Wiggle animation on hover */
-    animation: wiggle 0.3s ease-in-out infinite;
+@media (hover: hover) {
+    #joinButton:hover {
+        background: linear-gradient(45deg, #388E3C, #689F38);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        animation: wiggle 0.3s ease-in-out infinite;
+    }
 }
 
 #joinButton:active {
