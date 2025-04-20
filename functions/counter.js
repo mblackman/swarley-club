@@ -26,6 +26,10 @@ export async function onRequest(context) {
   try {
     // Check the request method
     if (request.method === "POST") {
+      const clientIP = request.headers.get('CF-Connecting-IP');
+      if (!clientIP) {
+        return new Response(JSON.stringify({ error: 'Could not determine client IP' }), { status: 400 });
+      }
       const hash = createHash("sha256");
       hash.update(clientIP);
       const hashedIP = hash.digest("hex");
