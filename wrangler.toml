@@ -1,8 +1,12 @@
 # Top-level configuration for Wrangler
 name = "swarley-club"
 compatibility_date = "2025-03-31"
+nodejs_compat = true
 
-# KV Namespace binding required by functions/counter.js
-[[kv_namespaces]]
-binding = "STATS_KV"
-id = "dummy-id-for-toml-structure"
+[build]
+platform = "node"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "swarley-club"
+database_id = "cac746f3-5a4d-4193-bdd7-c11816d0fd44"
