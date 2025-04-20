@@ -1,10 +1,7 @@
 # Top-level configuration for Wrangler
 name = "swarley-club"
+compatibility_flags = [ "nodejs_compat" ]
 compatibility_date = "2025-03-31"
-nodejs_compat = true
-
-[build]
-platform = "node"
 
 [[d1_databases]]
 binding = "DB"
