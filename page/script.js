@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const barkSound = document.getElementById('barkSound');
     const clubTitle = document.querySelector('h1');
 
-    const counterApiUrl = '/counter'; // URL for the Cloudflare Worker
+    const counterApiUrl = '/api/counter';
 
     // --- Swarley Facts ---
     const facts = [
@@ -107,9 +107,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return shuffled.slice(0, count); // Return the first 'count' elements
     }
 
-    // --- Counter Logic ---
-
-    // Function to fetch the CURRENT count (using GET) - Does NOT increment
     async function fetchInitialCount() {
         if (!memberCountSpan) return; // Exit if span not found
         try {
