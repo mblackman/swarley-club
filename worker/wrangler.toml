@@ -15,3 +15,4 @@ enabled = true
 binding = "DB"
 database_name = "swarley-club"
 database_id = "cac746f3-5a4d-4193-bdd7-c11816d0fd44"
+migrations_dir = "/migrations"
