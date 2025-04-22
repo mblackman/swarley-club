@@ -17,12 +17,12 @@ async function getCount(c) {
   return results?.unique_count || 0;
 }
 
-app.get("/counter", async (c) => {
+app.get("/api/counter", async (c) => {
   const count = await getCount(c);
   return c.json({count: count});
 });
 
-app.post("/counter", async (c) => {
+app.post("/api/counter", async (c) => {
   const hash = createHash('sha256');
   hash.update(clientIP);
   const hashedIP = hash.digest('hex');
