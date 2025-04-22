@@ -8,7 +8,7 @@ routes = [
   { pattern = "swarley.club/api/*", zone_name = "swarley.club" }
 ]
 
-[observability]
+[observability.logs]
 enabled = true
 
 [[d1_databases]]
