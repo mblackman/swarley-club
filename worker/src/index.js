@@ -1,67 +1,40 @@
 import { createHash } from 'node:crypto';
 
-async function handleRequest(request, env) {
-  const url = new URL(request.url);
+import { Hono } from "hono";
 
-  async function getCount() {
-    const { results } = await env.DB.prepare(`
-      SELECT COUNT(*) AS unique_count FROM unique_visits;
-    `).first();
-    return results?.unique_count || 0;
-  }
+const app = new Hono();
 
-  const responseHeaders = {
-    'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
-    'Cache-Control': 'no-cache, no-store, must-revalidate',
-  };
+const responseHeaders = {
+  'Content-Type': 'application/json',
+  'Access-Control-Allow-Origin': '*',
+  'Cache-Control': 'no-cache, no-store, must-revalidate',
+};
 
-  try {
-    if (request.method === 'POST') {
-      const clientIP = request.headers.get('CF-Connecting-IP');
-      if (!clientIP) {
-        return new Response(JSON.stringify({ error: 'Could not determine client IP' }), { status: 400, headers: responseHeaders });
-      }
-      const hash = createHash('sha256');
-      hash.update(clientIP);
-      const hashedIP = hash.digest('hex');
-      const timestamp = Date.now();
-
-      await env.DB.exec(
-        `
-        INSERT OR IGNORE INTO unique_visits (hashed_ip, timestamp) VALUES (?, ?);
-        `,
-        [hashedIP, timestamp]
-      );
-
-      const count = await getCount();
-      console.log(`Counter incremented to: ${count}`);
-      return new Response(JSON.stringify({ count: count }), { headers: responseHeaders });
-    } else if (request.method === 'GET') {
-      const count = await getCount();
-      return new Response(JSON.stringify({ count: count }), { headers: responseHeaders });
-    } else {
-      const count = await getCount();
-      return new Response(JSON.stringify({ error: 'Method not allowed', count: count }), {
-        status: 405,
-        headers: responseHeaders,
-      });
-    }
-  } catch (error) {
-    console.error('D1 Operation Error:', error);
-    return new Response(
-      JSON.stringify({
-        error: 'Could not access or update count',
-        count: 0,
-      }),
-      {
-        status: 500,
-        headers: responseHeaders,
-      }
-    );
-  }
+async function getCount(c) {
+  const { results } = await c.env.DB.prepare(`
+    SELECT COUNT(*) AS unique_count FROM unique_visits;
+  `).first();
+  return results?.unique_count || 0;
 }
 
-addEventListener('fetch', (event) => {
-  event.respondWith(handleRequest(event.request, event.env));
+app.get("/counter", async (c) => {
+  const count = await getCount(c);
+  return c.json({count: count});
 });
+
+app.post("/counter", async (c) => {
+  const hash = createHash('sha256');
+  hash.update(clientIP);
+  const hashedIP = hash.digest('hex');
+  const timestamp = Date.now();
+  await c.env.DB.exec(
+    `
+    INSERT OR IGNORE INTO unique_visits (hashed_ip, timestamp) VALUES (?, ?);
+    `,
+    [hashedIP, timestamp]
+  );
+  const count = await getCount(c);
+  return c.json({count: count});
+});
+
+export default app;
