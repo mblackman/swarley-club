@@ -13,6 +13,5 @@ enabled = true
 
 [[d1_databases]]
 binding = "DB"
-database_name = "swarley-club"
-database_id = "${secret:D1_DATABASE_ID}"
-migrations_dir = "./migrations"
+database_name = "swarley-club-test"
+database_id = "fake-guid"
