@@ -42,7 +42,9 @@ app.post("/api/counter", async (c) => {
 
   try {
     const hash = createHash('sha256');
+    const salt = c.env.IP_HASH_SALT;
     hash.update(clientIP);
+    hash.update(salt);
     const id = hash.digest('hex');
     const timestamp = Date.now();
     const count = await getCount(c);

@@ -14,5 +14,5 @@ enabled = true
 [[d1_databases]]
 binding = "DB"
 database_name = "swarley-club"
-database_id = "cac746f3-5a4d-4193-bdd7-c11816d0fd44"
+database_id = "${secret:D1_DATABASE_ID}"
 migrations_dir = "./migrations"
