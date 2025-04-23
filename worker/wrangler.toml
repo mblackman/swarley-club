@@ -1,0 +1,18 @@
+# Top-level configuration for Wrangler
+name = "swarley-club"
+main ="src/index.js"
+compatibility_flags = [ "nodejs_compat" ]
+compatibility_date = "2024-09-23"
+
+routes = [
+  { pattern = "swarley.club/api/*", zone_name = "swarley.club" }
+]
+
+[observability.logs]
+enabled = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "swarley-club"
+database_id = "${secret:D1_DATABASE_ID}"
+migrations_dir = "./migrations"

@@ -6,8 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const barkSound = document.getElementById('barkSound');
     const clubTitle = document.querySelector('h1');
 
-    const localStorageKey = 'swarleyClubJoined'; // Key for localStorage flag
-    const counterApiUrl = '/counter'; // URL for the Cloudflare Worker
+    const counterApiUrl = '/api/counter';
 
     // --- Swarley Facts ---
     const facts = [
@@ -108,9 +107,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return shuffled.slice(0, count); // Return the first 'count' elements
     }
 
-    // --- Counter Logic ---
-
-    // Function to fetch the CURRENT count (using GET) - Does NOT increment
     async function fetchInitialCount() {
         if (!memberCountSpan) return; // Exit if span not found
         try {
@@ -167,17 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             if (barkSound) { try { barkSound.currentTime = 0; await barkSound.play(); } catch (e) { console.error("Audio play failed:", e); } }
 
-            // --- Conditional Counter Increment ---
-            if (!localStorage.getItem(localStorageKey)) {
-                // First click in this browser
-                console.log("First join from this browser. Incrementing counter...");
-                await incrementAndFetchCounter();
-                localStorage.setItem(localStorageKey, 'true');
-            } else {
-                // Repeat click
-                console.log("Already joined from this browser. Animations played, counter not incremented.");
-                // Re-enable button slightly quicker maybe, since no network request? Optional.
-            }
+            await incrementAndFetchCounter();
 
             // --- Actions after conditional logic ---
             setTimeout(() => {

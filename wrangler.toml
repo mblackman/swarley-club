@@ -1,8 +1,0 @@
-# Top-level configuration for Wrangler
-name = "swarley-club"
-compatibility_date = "2025-03-31"
-
-# KV Namespace binding required by functions/counter.js
-[[kv_namespaces]]
-binding = "STATS_KV"
-id = "dummy-id-for-toml-structure"
