@@ -46,8 +46,6 @@ app.post("/api/counter", async (c) => {
     hash.update(clientIP);
     hash.update(salt);
     const id = hash.digest('hex');
-    const timestamp = Date.now();
-    const count = await getCount(c);
     const exists = await checkExistingId(c, id);
 
     if (exists) {
@@ -55,6 +53,7 @@ app.post("/api/counter", async (c) => {
       return c.json({ count: count }, 200, responseHeaders);
     }
 
+    const timestamp = Date.now();
     const {success} = await c.env.DB.prepare(
       `
       INSERT OR IGNORE INTO unique_visits (id, timestamp) VALUES (?, ?);
@@ -62,6 +61,7 @@ app.post("/api/counter", async (c) => {
     ).bind(id, timestamp)
     .run();
     
+    const count = await getCount(c);
     if (success) {
       return c.json({ count: count }, 200, responseHeaders);  
     }
