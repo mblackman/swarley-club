@@ -13,5 +13,5 @@ enabled = true
 
 [[d1_databases]]
 binding = "DB"
-database_name = "swarley-club-test"
-database_id = "fake-guid"
+database_name = "swarley-club"
+database_id = "4fd463ae-0c35-4736-91a7-c40fbd703f78"
