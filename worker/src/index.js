@@ -49,8 +49,7 @@ app.post("/api/counter", async (c) => {
     const exists = await checkExistingId(c, id);
 
     if (exists) {
-      const count = await getCount(c);
-      return c.json({ count: count }, 200, responseHeaders);
+      return c.json(200, responseHeaders);
     }
 
     const timestamp = Date.now();
@@ -65,7 +64,7 @@ app.post("/api/counter", async (c) => {
     if (success) {
       return c.json({ count: count }, 200, responseHeaders);  
     }
-    return c.json({ count: count }, 500, responseHeaders);
+    return c.json(500, responseHeaders);
   } catch (error) {
     console.error('D1 Operation Error:', error);
     return c.json(
