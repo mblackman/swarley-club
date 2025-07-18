@@ -134,10 +134,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(errorMsg);
             }
             const data = await response.json();
-            memberCountSpan.textContent = data.count ?? 'Error!';
+            if (data.count) {
+                memberCountSpan.textContent = data.count;
+            }
         } catch (error) {
             console.error("Failed to increment or update counter:", error);
-            memberCountSpan.textContent = 'Error!';
         }
     }
 
