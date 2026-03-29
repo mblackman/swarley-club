@@ -134,7 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(errorMsg);
             }
             const data = await response.json();
-            if (data.count) {
+            if (data.count != null) {
                 memberCountSpan.textContent = data.count;
             }
         } catch (error) {
@@ -154,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
             joinButton.disabled = true; // Disable button immediately
 
             // --- Actions to perform on EVERY click ---
-            try { confetti({ /* ... confetti options ... */ }); } catch (e) { console.error("Confetti error:", e); }
+            try { confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } }); } catch (e) { console.error("Confetti error:", e); }
             dogPics.forEach((pic, index) => {
                 if (index % 2 === 0) {
                     pic.classList.add('dancing-1');
