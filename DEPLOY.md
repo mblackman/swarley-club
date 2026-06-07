@@ -155,11 +155,26 @@ Page side:
 
 ## Routine tasks
 
-### Add photos to the gallery
-1. Drop image files into `page/images/gallery/` (or `page/images/`).
-2. Add one entry per photo to the `GALLERY` list in `page/gallery.js`
-   (`base` = path without extension; set `webp: true` only if a `.webp` twin
-   exists). Commit + push.
+### Add photos to the gallery (with the optimization pipeline)
+Don't commit raw Google Photos exports — they're multi-MB each. Run them through
+the pipeline first (needs `cd scripts && npm install` once):
+
+1. Drop full-res originals into `scripts/source-photos/` (gitignored).
+2. From `scripts/`: `npm run gallery`
+   - Writes optimized **AVIF + WebP + JPEG**, in a **full** (≤1600px, for the
+     lightbox) and **thumbnail** (≤600px, for the grid) size, into
+     `page/images/gallery/`. Strips metadata, bakes in EXIF rotation.
+   - Prints ready-to-paste `GALLERY` entries.
+3. Paste those entries into the `GALLERY` array in `page/gallery.js`, fill in
+   `alt`/`caption`, commit the generated `page/images/gallery/` files + push.
+
+The grid loads tiny thumbnails and the browser picks AVIF/WebP automatically, so
+even a huge gallery stays fast.
+
+### Optimize the static assets
+`page/`'s social image + app icons are kept compressed. If you replace any of
+them, re-run `cd scripts && npm run assets` to recompress in place (JPEG via
+mozjpeg, PNG via lossy palette) without changing dimensions.
 
 ### Moderate submissions
 Open `admin.html`, paste your `ADMIN_TOKEN`, Approve/Reject pending photos and

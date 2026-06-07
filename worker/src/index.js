@@ -30,7 +30,24 @@ const EXT_BY_MIME = {
   'image/webp': 'webp',
   'image/gif': 'gif',
 };
-const MAX_SIZE = 8 * 1024 * 1024; // 8 MB
+const MAX_SIZE = 8 * 1024 * 1024; // 8 MB per image (hard cap)
+
+// --- Abuse / storage guards -------------------------------------------------
+const STORAGE_BUDGET_DEFAULT = 5 * 1024 * 1024 * 1024; // 5 GiB (override via STORAGE_BUDGET_BYTES var)
+const MAX_PENDING_SUBMISSIONS = 300;   // cap the photo moderation backlog
+const MAX_PENDING_MEMORIES = 500;      // cap the guestbook moderation backlog
+const MAX_UPLOADS_PER_IP_DAY = 25;     // per uploader, rolling 24h
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// sha256(ip + salt) — same privacy-preserving scheme as the counter.
+function hashIp(c) {
+  const ip = c.req.header('CF-Connecting-IP');
+  if (!ip || !c.env.IP_HASH_SALT) return null;
+  const h = createHash('sha256');
+  h.update(ip);
+  h.update(c.env.IP_HASH_SALT);
+  return h.digest('hex');
+}
 
 // --- Guestbook config (keep in sync with page/memories.js) ------------------
 const MAX_MESSAGE = 2000;
@@ -192,6 +209,37 @@ app.post('/api/submissions', async (c) => {
     return c.json({ error: 'Image must be between 1 byte and 8 MB' }, 400, responseHeaders);
   }
 
+  // 2.5) Abuse / storage guards.
+  const ipHash = hashIp(c);
+  try {
+    const pending = await c.env.DB.prepare(
+      `SELECT COUNT(*) AS n FROM submissions WHERE status = 'pending';`
+    ).first();
+    if (pending && pending.n >= MAX_PENDING_SUBMISSIONS) {
+      return c.json({ error: 'There are lots of photos waiting to be reviewed right now. Please try again later. 💛' }, 429, responseHeaders);
+    }
+
+    if (ipHash) {
+      const recent = await c.env.DB.prepare(
+        `SELECT COUNT(*) AS n FROM submissions WHERE ip_hash = ? AND created_at > ?;`
+      ).bind(ipHash, Date.now() - DAY_MS).first();
+      if (recent && recent.n >= MAX_UPLOADS_PER_IP_DAY) {
+        return c.json({ error: "Thank you for sharing so many! You've reached today's limit — please come back tomorrow." }, 429, responseHeaders);
+      }
+    }
+
+    const budget = Number(c.env.STORAGE_BUDGET_BYTES) || STORAGE_BUDGET_DEFAULT;
+    const used = await c.env.DB.prepare(
+      `SELECT COALESCE(SUM(size), 0) AS total FROM submissions WHERE status IN ('pending', 'approved');`
+    ).first();
+    if (used && Number(used.total) + file.size > budget) {
+      return c.json({ error: "We've reached our photo storage limit for now. Thank you so much — please check back later." }, 507, responseHeaders);
+    }
+  } catch (err) {
+    console.error('Guard check error:', err);
+    return c.json({ error: 'Could not save submission' }, 500, responseHeaders);
+  }
+
   // 3) Store in R2 + record as pending.
   try {
     const id = crypto.randomUUID();
@@ -207,9 +255,9 @@ app.post('/api/submissions', async (c) => {
 
     await c.env.DB.prepare(`
       INSERT INTO submissions
-        (id, r2_key, filename, submitter, caption, mime, size, status, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?);
-    `).bind(id, key, filename, submitter, caption, file.type, file.size, Date.now()).run();
+        (id, r2_key, filename, submitter, caption, mime, size, status, created_at, ip_hash)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?);
+    `).bind(id, key, filename, submitter, caption, file.type, file.size, Date.now(), ipHash).run();
 
     c.executionCtx.waitUntil(sendNotification(
       c,
@@ -295,6 +343,62 @@ app.get('/api/submissions/:id/image', async (c) => {
 // ===========================================================================
 // Admin moderation (Bearer ADMIN_TOKEN)
 // ===========================================================================
+
+// POST /api/admin/submissions/upload — owner uploads a photo straight to the
+// gallery (stored as 'approved', no Turnstile, no per-IP/backlog caps). The
+// storage budget is still honored. Mirrors the public upload otherwise.
+app.post('/api/admin/submissions/upload', requireAdmin, async (c) => {
+  let body;
+  try {
+    body = await c.req.parseBody();
+  } catch (err) {
+    return c.json({ error: 'Invalid form data' }, 400, responseHeaders);
+  }
+
+  const file = body['file'];
+  if (!file || typeof file === 'string' || typeof file.arrayBuffer !== 'function') {
+    return c.json({ error: 'No image was provided' }, 400, responseHeaders);
+  }
+  if (!ALLOWED_MIME.has(file.type)) {
+    return c.json({ error: 'Unsupported image type' }, 400, responseHeaders);
+  }
+  if (file.size <= 0 || file.size > MAX_SIZE) {
+    return c.json({ error: 'Image must be between 1 byte and 8 MB' }, 400, responseHeaders);
+  }
+
+  try {
+    const budget = Number(c.env.STORAGE_BUDGET_BYTES) || STORAGE_BUDGET_DEFAULT;
+    const used = await c.env.DB.prepare(
+      `SELECT COALESCE(SUM(size), 0) AS total FROM submissions WHERE status IN ('pending', 'approved');`
+    ).first();
+    if (used && Number(used.total) + file.size > budget) {
+      return c.json({ error: 'Storage budget reached.' }, 507, responseHeaders);
+    }
+
+    const id = crypto.randomUUID();
+    const ext = EXT_BY_MIME[file.type];
+    const key = `submissions/${id}.${ext}`;
+    const submitter = String(body['name'] || '').slice(0, 80) || null;
+    const caption = String(body['caption'] || '').slice(0, 500) || null;
+    const filename = (file.name ? String(file.name) : '').slice(0, 255) || null;
+    const now = Date.now();
+
+    await c.env.SUBMISSIONS_BUCKET.put(key, file.stream(), {
+      httpMetadata: { contentType: file.type },
+    });
+
+    await c.env.DB.prepare(`
+      INSERT INTO submissions
+        (id, r2_key, filename, submitter, caption, mime, size, status, created_at, reviewed_at, ip_hash)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, NULL);
+    `).bind(id, key, filename, submitter, caption, file.type, file.size, now, now).run();
+
+    return c.json({ ok: true, id }, 201, responseHeaders);
+  } catch (err) {
+    console.error('Admin upload error:', err);
+    return c.json({ error: 'Could not save photo', details: err.message }, 500, responseHeaders);
+  }
+});
 
 // GET /api/admin/submissions — list pending.
 app.get('/api/admin/submissions', requireAdmin, async (c) => {
@@ -396,6 +500,18 @@ app.post('/api/memories', async (c) => {
     return c.json({ error: `Message must be ${MAX_MESSAGE} characters or fewer` }, 400, responseHeaders);
   }
   const author = String(payload.author || '').trim().slice(0, MAX_AUTHOR) || null;
+
+  // Cap the moderation backlog (best-effort — never blocks on a guard error).
+  try {
+    const pending = await c.env.DB.prepare(
+      `SELECT COUNT(*) AS n FROM memories WHERE status = 'pending';`
+    ).first();
+    if (pending && pending.n >= MAX_PENDING_MEMORIES) {
+      return c.json({ error: 'There are lots of memories waiting to be reviewed right now. Please try again later. 💛' }, 429, responseHeaders);
+    }
+  } catch (err) {
+    console.error('Memory guard error:', err);
+  }
 
   try {
     const id = crypto.randomUUID();

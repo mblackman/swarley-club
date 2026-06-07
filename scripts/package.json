@@ -1,0 +1,14 @@
+{
+  "name": "swarley-image-tools",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Image optimization tooling for swarley.club (sharp-based).",
+  "scripts": {
+    "gallery": "node optimize-gallery.mjs",
+    "assets": "node optimize-assets.mjs"
+  },
+  "dependencies": {
+    "sharp": "^0.33.5"
+  }
+}

@@ -1,13 +1,20 @@
 // =====================================================================
 // Swarley gallery
 //
-// CURATED PHOTOS: edit the GALLERY list below. To add a photo:
-//   1. Drop the file into  page/images/gallery/   (or page/images/)
-//   2. Add one entry here with `base` = path WITHOUT extension.
-//      Set `webp: true` only if a matching .webp twin exists next to it.
+// CURATED PHOTOS: edit the GALLERY list below.
 //
-// It is seeded with the original site photos so the gallery is never empty.
-// Replace/extend these with the big collection from Google Photos.
+// Easiest way to add the big collection from Google Photos:
+//   1. Drop full-res originals into  scripts/source-photos/
+//   2. From scripts/:  npm run gallery
+//      → writes optimized AVIF/WebP/JPEG (full + thumbnail) into
+//        page/images/gallery/ and prints ready-to-paste manifest entries.
+//   3. Paste those entries here and fill in the alt/caption text.
+//
+// Manual entries also work: { base, ext='jpg', webp?, avif?, thumb?, w?, h?, alt, caption }
+// where `base` is the path WITHOUT extension. `thumb:true` means a small
+// `<base>-thumb.<ext>` exists for the grid; the lightbox always uses full size.
+//
+// Seeded with the original site photos so the gallery is never empty.
 // =====================================================================
 const GALLERY = [
   { base: "images/swarley-1",  ext: "jpg", webp: true, alt: "Swarley being a gentleman in a suit", caption: "" },
@@ -36,26 +43,40 @@ document.addEventListener("DOMContentLoaded", () => {
   loadCommunity();
 });
 
+function makeSource(srcset, type) {
+  const s = document.createElement("source");
+  s.srcset = srcset;
+  s.type = type;
+  return s;
+}
+
 // --- Curated grid -----------------------------------------------------
+// Manifest fields: { base, ext='jpg', webp?, avif?, thumb?, w?, h?, alt, caption }.
+// The grid uses the small `-thumb` variant when `thumb` is set; the lightbox
+// always opens the full-size image. avif/webp sources are added when present.
 function renderCurated() {
   const grid = document.getElementById("curatedGallery");
   if (!grid) return;
-  GALLERY.forEach((item) => {
-    const full = `${item.base}.${item.ext}`;
-    const idx = lightboxItems.push({ src: full, alt: item.alt, caption: item.caption }) - 1;
+  // Hand-listed photos first, then anything the image pipeline auto-generated
+  // into window.SWARLEY_GALLERY (see scripts/optimize-gallery.mjs).
+  const items = GALLERY.concat(window.SWARLEY_GALLERY || []);
+  items.forEach((item) => {
+    const ext = item.ext || "jpg";
+    const full = `${item.base}.${ext}`;            // lightbox source
+    const gridStem = item.thumb ? `${item.base}-thumb` : item.base;
+    const idx = lightboxItems.push({
+      src: full, alt: item.alt, caption: item.caption, w: item.w, h: item.h,
+    }) - 1;
 
     const figure = document.createElement("figure");
     const picture = document.createElement("picture");
-    if (item.webp) {
-      const source = document.createElement("source");
-      source.srcset = `${item.base}.webp`;
-      source.type = "image/webp";
-      picture.appendChild(source);
-    }
+    if (item.avif) picture.appendChild(makeSource(`${gridStem}.avif`, "image/avif"));
+    if (item.webp) picture.appendChild(makeSource(`${gridStem}.webp`, "image/webp"));
     const img = document.createElement("img");
-    img.src = full;
-    img.alt = item.alt;
+    img.src = `${gridStem}.${ext}`;
+    img.alt = item.alt || "Swarley";
     img.loading = "lazy";
+    img.decoding = "async";
     picture.appendChild(img);
     figure.appendChild(picture);
 
@@ -79,7 +100,7 @@ async function loadCommunity() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const items = await res.json();
     if (!Array.isArray(items) || items.length === 0) {
-      if (empty) empty.textContent = "No shared photos yet — be the first to add one of the best boy. 🐾";
+      if (empty) empty.textContent = "No shared photos yet — be the first to add one of the best boy.";
       return;
     }
     if (empty) empty.style.display = "none";
@@ -150,6 +171,9 @@ function renderLightbox() {
   const item = lightboxItems[lbIndex];
   if (!item) return;
   const img = document.getElementById("lbImg");
+  // Set intrinsic size first (when known) to avoid layout jump as it loads.
+  if (item.w && item.h) { img.width = item.w; img.height = item.h; }
+  else { img.removeAttribute("width"); img.removeAttribute("height"); }
   img.src = item.src;
   img.alt = item.alt;
   document.getElementById("lbCaption").textContent = item.caption || item.alt || "";

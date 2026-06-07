@@ -11,6 +11,11 @@ routes = [
 [observability.logs]
 enabled = true
 
+[vars]
+# Max total bytes of stored submissions (pending + approved) before new uploads
+# are refused. 5 GiB keeps a safe margin under R2's 10 GB free tier.
+STORAGE_BUDGET_BYTES = 5368709120
+
 [[d1_databases]]
 binding = "DB"
 database_name = "swarley-club"
@@ -42,6 +47,9 @@ routes = []
 
 [env.dev.observability.logs]
 enabled = true
+
+[env.dev.vars]
+STORAGE_BUDGET_BYTES = 5368709120
 
 [[env.dev.d1_databases]]
 binding = "DB"

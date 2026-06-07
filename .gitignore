@@ -6,3 +6,7 @@ worker/node_modules
 .secrets/
 # Local agent/LLM scratchpad — agent-facing docs, notes, indexes (not part of the project)
 .agent/
+
+# Image tooling deps and originals (do not commit)
+scripts/node_modules
+scripts/source-photos/

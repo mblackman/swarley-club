@@ -12,8 +12,15 @@ document.addEventListener("DOMContentLoaded", () => {
   const statusEl = document.getElementById("status");
   const photosList = document.getElementById("pendingList");
   const photosNote = document.getElementById("photosNote");
+  const approvedList = document.getElementById("approvedList");
+  const approvedNote = document.getElementById("approvedNote");
   const memoriesList = document.getElementById("pendingMemories");
   const memoriesNote = document.getElementById("memoriesNote");
+  const uploadFile = document.getElementById("uploadFile");
+  const uploadCaption = document.getElementById("uploadCaption");
+  const uploadName = document.getElementById("uploadName");
+  const uploadBtn = document.getElementById("uploadBtn");
+  const uploadStatus = document.getElementById("uploadStatus");
 
   function setStatus(msg, kind) {
     statusEl.textContent = msg;
@@ -37,20 +44,59 @@ document.addEventListener("DOMContentLoaded", () => {
     sessionStorage.removeItem("swarley_admin_token");
     tokenInput.value = "";
     photosList.innerHTML = "";
+    approvedList.innerHTML = "";
     memoriesList.innerHTML = "";
     photosNote.textContent = "";
+    approvedNote.textContent = "";
     memoriesNote.textContent = "";
     logoutBtn.style.display = "none";
     setStatus("Token forgotten.", "");
   });
 
+  uploadBtn.addEventListener("click", uploadPhoto);
+
   async function loadAll() {
     setStatus("Loading…", "");
     photosList.innerHTML = "";
+    approvedList.innerHTML = "";
     memoriesList.innerHTML = "";
-    const results = await Promise.allSettled([loadPhotos(), loadMemories()]);
+    const results = await Promise.allSettled([loadPhotos(), loadApproved(), loadMemories()]);
     const failed = results.find((r) => r.status === "rejected");
     setStatus(failed ? `Some lists failed to load (${failed.reason}).` : "Loaded.", failed ? "err" : "");
+  }
+
+  // --- Owner upload (auto-approved) -------------------------------------
+  async function uploadPhoto() {
+    if (!getToken()) { uploadStatus.textContent = "Load with your token first."; uploadStatus.className = "form-status err"; return; }
+    const file = uploadFile.files && uploadFile.files[0];
+    if (!file) { uploadStatus.textContent = "Choose an image first."; uploadStatus.className = "form-status err"; return; }
+    const form = new FormData();
+    form.append("file", file);
+    if (uploadCaption.value.trim()) form.append("caption", uploadCaption.value.trim());
+    if (uploadName.value.trim()) form.append("name", uploadName.value.trim());
+    uploadBtn.disabled = true;
+    uploadStatus.textContent = "Uploading…";
+    uploadStatus.className = "form-status";
+    try {
+      const res = await fetch(`${apiBase}/admin/submissions/upload`, {
+        method: "POST", headers: authHeaders(), body: form,
+      });
+      if (!res.ok) {
+        let msg = `HTTP ${res.status}`;
+        try { const e = await res.json(); if (e.error) msg = e.error; } catch {}
+        throw new Error(msg);
+      }
+      uploadStatus.textContent = "Added to the gallery.";
+      uploadStatus.className = "form-status ok";
+      uploadFile.value = ""; uploadCaption.value = ""; uploadName.value = "";
+      approvedList.innerHTML = "";
+      await loadApproved();
+    } catch (err) {
+      uploadStatus.textContent = `Upload failed: ${err.message}`;
+      uploadStatus.className = "form-status err";
+    } finally {
+      uploadBtn.disabled = false;
+    }
   }
 
   // --- Photos -----------------------------------------------------------
@@ -89,6 +135,61 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!res.ok) return null;
       return URL.createObjectURL(await res.blob());
     } catch { return null; }
+  }
+
+  // --- Approved gallery photos (manage / delete) ------------------------
+  async function loadApproved() {
+    // The public list already returns approved photos (newest first).
+    const res = await fetch(`${apiBase}/submissions`, { headers: authHeaders() });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const items = await res.json();
+    approvedNote.textContent = items.length ? "" : "No gallery photos yet.";
+    items.forEach(renderApprovedCard);
+  }
+
+  function renderApprovedCard(item) {
+    const card = document.createElement("div");
+    card.className = "admin-card";
+
+    const img = document.createElement("img");
+    img.alt = item.caption || "Gallery photo";
+    img.loading = "lazy";
+    img.src = item.imageUrl.startsWith("http") ? item.imageUrl : `${apiBase.replace(/\/api$/, "")}${item.imageUrl}`;
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    const when = item.created_at ? new Date(item.created_at).toLocaleString() : "";
+    meta.innerHTML =
+      `<strong>${escapeHtml(item.submitter || "—")}</strong><br>` +
+      `${escapeHtml(item.caption || "(no caption)")}<br>` +
+      `<small>${escapeHtml(when)}</small>`;
+
+    const actions = document.createElement("div");
+    actions.className = "actions";
+    const del = document.createElement("button");
+    del.className = "reject";
+    del.textContent = "Delete";
+    del.addEventListener("click", () => deleteApproved(item.id, card));
+    actions.append(del);
+
+    card.append(img, meta, actions);
+    approvedList.appendChild(card);
+  }
+
+  async function deleteApproved(id, card) {
+    if (!confirm("Delete this photo permanently?")) return;
+    card.style.opacity = "0.5";
+    try {
+      const res = await fetch(`${apiBase}/admin/submissions/${id}`, {
+        method: "DELETE", headers: authHeaders(),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      card.remove();
+      if (approvedList.querySelectorAll(".admin-card").length === 0) approvedNote.textContent = "No gallery photos yet.";
+    } catch (err) {
+      card.style.opacity = "1";
+      setStatus(`Delete failed: ${err.message}`, "err");
+    }
   }
 
   // --- Memories ---------------------------------------------------------

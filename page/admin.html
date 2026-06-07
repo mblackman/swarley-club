@@ -28,9 +28,25 @@
 
             <p id="status" class="form-status" role="status" aria-live="polite"></p>
 
+            <h2 class="section-label">Add a Photo</h2>
+            <div class="form-field" id="uploadRow">
+                <label for="uploadFile">Image (JPEG / PNG / WebP / GIF, ≤ 8 MB)</label>
+                <input type="file" id="uploadFile" accept="image/jpeg,image/png,image/webp,image/gif">
+                <label for="uploadCaption">Caption (optional)</label>
+                <input type="text" id="uploadCaption" placeholder="e.g. Snow day, 2019" maxlength="500">
+                <label for="uploadName">Credit / name (optional)</label>
+                <input type="text" id="uploadName" placeholder="e.g. Mom" maxlength="80">
+                <p><button class="submit-btn" id="uploadBtn">Upload to gallery</button></p>
+                <p id="uploadStatus" class="form-status" role="status" aria-live="polite"></p>
+            </div>
+
             <h2 class="section-label">Pending Photos</h2>
             <p class="gallery-empty" id="photosNote"></p>
             <div id="pendingList"></div>
+
+            <h2 class="section-label">Gallery Photos</h2>
+            <p class="gallery-empty" id="approvedNote"></p>
+            <div id="approvedList"></div>
 
             <h2 class="section-label">Pending Memories</h2>
             <p class="gallery-empty" id="memoriesNote"></p>
@@ -38,7 +54,7 @@
         </main>
 
         <footer>
-            <p>In loving memory of Swarles Barkley. 🐾</p>
+            <p>In loving memory of Swarles Barkley.</p>
         </footer>
     </div>
 

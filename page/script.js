@@ -5,7 +5,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const swarleyFactP = document.getElementById('swarleyFact');
     const barkSound = document.getElementById('barkSound');
     const clubTitle = document.querySelector('h1');
-    const favoritesList = document.getElementById('favoritesList');
 
     // API base resolves to prod ("/api") or the dev Worker — see config.js
     const apiBase = (window.SWARLEY && window.SWARLEY.API_BASE) || '/api';
@@ -32,6 +31,9 @@ document.addEventListener('DOMContentLoaded', () => {
         "An aspiring interior designer, famous for spontaneous bed rearrangement."
     ];
 
+    // Curated photos baked into the site. Community uploads (from R2 via the
+    // submissions API) get merged into this pool at load time so the homepage
+    // rotation reuses every photo — the ones we add and the ones friends share.
     const allSwarleyPics = [
         // IMPORTANT: User needs to replace these with REAL paths/URLs and descriptive alt text
         { src: "images/swarley-1.webp", alt: "Swarley being a gentleman in a suit" },
@@ -49,6 +51,15 @@ document.addEventListener('DOMContentLoaded', () => {
         { src: "images/swarley-13.webp", alt: "Swarley relaxing" },
       ];
 
+    // Pull in pipeline-generated photos (scripts/optimize-gallery.mjs writes
+    // window.SWARLEY_GALLERY). Each has webp/jpg siblings, so the non-remote
+    // render path handles them like the static curated pics above.
+    if (Array.isArray(window.SWARLEY_GALLERY)) {
+        window.SWARLEY_GALLERY.forEach((g) => {
+            if (g && g.base) allSwarleyPics.push({ src: `${g.base}.${g.ext || 'jpg'}`, alt: g.alt || 'Swarley' });
+        });
+    }
+
     function displayRandomFact() {
         if (swarleyFactP) {
             const randomIndex = Math.floor(Math.random() * facts.length);
@@ -57,35 +68,52 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Populate the "A Few of His Favorite Things" list from the facts above.
-    function renderFavorites() {
-        if (!favoritesList) return;
-        favoritesList.innerHTML = '';
-        facts.forEach((fact) => {
-            const li = document.createElement('li');
-            li.textContent = fact.trim();
-            favoritesList.appendChild(li);
-        });
+    // Pull approved community uploads from the submissions API (R2-backed) and
+    // fold them into the rotation pool. Best-effort: if it fails, we just keep
+    // the curated pics. Remote items carry `remote: true` so the renderer knows
+    // they have no webp/jpg sibling variants.
+    async function fetchCommunityPics() {
+        try {
+            const res = await fetch(`${apiBase}/submissions`, { method: 'GET' });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const items = await res.json();
+            if (!Array.isArray(items)) return;
+            const origin = apiBase.replace(/\/api$/, '');
+            items.forEach((sub) => {
+                if (!sub || !sub.imageUrl) return;
+                const src = sub.imageUrl.startsWith('http') ? sub.imageUrl : `${origin}${sub.imageUrl}`;
+                const altParts = [];
+                if (sub.caption) altParts.push(sub.caption);
+                if (sub.submitter) altParts.push(`shared by ${sub.submitter}`);
+                const alt = altParts.length ? `Swarley — ${altParts.join(', ')}` : 'Swarley, shared by a friend';
+                allSwarleyPics.push({ src, alt, remote: true });
+            });
+        } catch (err) {
+            console.error('Failed to load community pics for rotation:', err);
+        }
     }
 
     function loadSwarleyPics() {
         const dogPicElements = document.querySelectorAll('.dog-pic img');
         const numPicsToDisplay = dogPicElements.length;
-      
+
         if (dogPicElements.length > 0 && allSwarleyPics.length > 0) {
            const selectedPics = getRandomPics(allSwarleyPics, numPicsToDisplay);
-      
+
            dogPicElements.forEach((imgElement, index) => {
-             if (selectedPics[index]) {
-               // --- If using <picture> element ---
+             const pic = selectedPics[index];
+             if (pic) {
                const pictureElement = imgElement.closest('.dog-pic');
-               if (pictureElement) {
-                  // Find all <source> elements within the picture
-                  const sources = pictureElement.querySelectorAll('source');
-                  // Get the base filename (without extension)
-                  const baseSrc = selectedPics[index].src.substring(0, selectedPics[index].src.lastIndexOf('.'));
-      
-                  // Update srcset for each source type (webp, avif, jpg etc.)
+               const sources = pictureElement ? pictureElement.querySelectorAll('source') : [];
+
+               if (pic.remote) {
+                  // R2-served upload: one URL, no format variants. Point every
+                  // <source> and the fallback <img> at the same URL.
+                  sources.forEach(source => { source.srcset = pic.src; });
+                  imgElement.src = pic.src;
+               } else {
+                  // Curated static pic: swap in the webp/jpg siblings by base name.
+                  const baseSrc = pic.src.substring(0, pic.src.lastIndexOf('.'));
                   sources.forEach(source => {
                       if (source.type === 'image/webp') {
                           source.srcset = baseSrc + '.webp';
@@ -93,10 +121,9 @@ document.addEventListener('DOMContentLoaded', () => {
                           source.srcset = baseSrc + '.jpg';
                       }
                   });
+                  imgElement.src = pic.src.replace(/\.\w+$/, '.jpg');
                }
-               // --- Always update the fallback <img> ---
-               imgElement.src = selectedPics[index].src.replace(/\.\w+$/, '.jpg');
-               imgElement.alt = selectedPics[index].alt;
+               imgElement.alt = pic.alt;
                imgElement.style.opacity = 0;
                imgElement.onload = () => { imgElement.style.opacity = 1; };
              }
@@ -161,9 +188,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Initial Load Actions ---
     displayRandomFact();
-    renderFavorites();
     fetchInitialCount();
-    loadSwarleyPics();
+    loadSwarleyPics(); // curated pics immediately…
+    fetchCommunityPics().then(loadSwarleyPics); // …then re-roll once community pics arrive
 
     // --- Button Click Handler ---
     if (joinButton) {
