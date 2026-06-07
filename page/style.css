@@ -167,7 +167,9 @@ header .dates::before {
 .dog-pic img {
     display: block;
     width: 100%;
+    aspect-ratio: 1 / 1;
     height: auto;
+    object-fit: cover;
     border-radius: 3px;
 }
 .dog-pic:hover {
