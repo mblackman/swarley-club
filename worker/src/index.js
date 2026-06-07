@@ -29,6 +29,7 @@ const responseHeaders = {
 
 // --- Submission config (keep in sync with page/submit.js) -------------------
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+const ALLOWED_KIND = new Set(['photo', 'artwork']); // image category, set by admin
 const EXT_BY_MIME = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
@@ -285,7 +286,7 @@ app.post('/api/submissions', async (c) => {
 app.get('/api/submissions', async (c) => {
   try {
     const { results } = await c.env.DB.prepare(`
-      SELECT id, submitter, caption, created_at
+      SELECT id, submitter, caption, kind, created_at
       FROM submissions
       WHERE status = 'approved'
       ORDER BY created_at DESC;
@@ -294,6 +295,7 @@ app.get('/api/submissions', async (c) => {
       id: r.id,
       submitter: r.submitter,
       caption: r.caption,
+      kind: r.kind,
       created_at: r.created_at,
       imageUrl: `/api/submissions/${r.id}/image`,
     }));
@@ -410,6 +412,7 @@ app.post('/api/admin/submissions/upload', requireAdmin, async (c) => {
     const submitter = String(body['name'] || '').slice(0, 80) || null;
     const caption = String(body['caption'] || '').slice(0, 500) || null;
     const filename = (file.name ? String(file.name) : '').slice(0, 255) || null;
+    const kind = ALLOWED_KIND.has(String(body['kind'])) ? String(body['kind']) : 'photo';
     const now = Date.now();
 
     await c.env.SUBMISSIONS_BUCKET.put(key, file.stream(), {
@@ -418,9 +421,9 @@ app.post('/api/admin/submissions/upload', requireAdmin, async (c) => {
 
     await c.env.DB.prepare(`
       INSERT INTO submissions
-        (id, r2_key, filename, submitter, caption, mime, size, status, created_at, reviewed_at, ip_hash)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, NULL);
-    `).bind(id, key, filename, submitter, caption, file.type, file.size, now, now).run();
+        (id, r2_key, filename, submitter, caption, kind, mime, size, status, created_at, reviewed_at, ip_hash)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, NULL);
+    `).bind(id, key, filename, submitter, caption, kind, file.type, file.size, now, now).run();
 
     return c.json({ ok: true, id }, 201, responseHeaders);
   } catch (err) {
@@ -433,7 +436,7 @@ app.post('/api/admin/submissions/upload', requireAdmin, async (c) => {
 app.get('/api/admin/submissions', requireAdmin, async (c) => {
   try {
     const { results } = await c.env.DB.prepare(`
-      SELECT id, filename, submitter, caption, mime, size, created_at
+      SELECT id, filename, submitter, caption, kind, mime, size, created_at
       FROM submissions
       WHERE status = 'pending'
       ORDER BY created_at ASC;
@@ -481,6 +484,32 @@ app.post('/api/admin/submissions/:id', requireAdmin, async (c) => {
   } catch (err) {
     console.error('Moderate error:', err);
     return c.json({ error: 'Could not update submission' }, 500, responseHeaders);
+  }
+});
+
+// POST /api/admin/submissions/:id/kind — tag as 'photo' or 'artwork'.
+app.post('/api/admin/submissions/:id/kind', requireAdmin, async (c) => {
+  const id = c.req.param('id');
+  let kind;
+  try {
+    ({ kind } = await c.req.json());
+  } catch {
+    return c.json({ error: 'Invalid body' }, 400, responseHeaders);
+  }
+  if (!ALLOWED_KIND.has(kind)) {
+    return c.json({ error: 'kind must be "photo" or "artwork"' }, 400, responseHeaders);
+  }
+  try {
+    const { meta } = await c.env.DB.prepare(`
+      UPDATE submissions SET kind = ? WHERE id = ?;
+    `).bind(kind, id).run();
+    if (meta && meta.changes === 0) {
+      return c.json({ error: 'Not found' }, 404, responseHeaders);
+    }
+    return c.json({ ok: true, kind }, 200, responseHeaders);
+  } catch (err) {
+    console.error('Set kind error:', err);
+    return c.json({ error: 'Could not update image' }, 500, responseHeaders);
   }
 });
 

@@ -19,6 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const uploadFile = document.getElementById("uploadFile");
   const uploadCaption = document.getElementById("uploadCaption");
   const uploadName = document.getElementById("uploadName");
+  const uploadKind = document.getElementById("uploadKind");
   const uploadBtn = document.getElementById("uploadBtn");
   const uploadStatus = document.getElementById("uploadStatus");
 
@@ -74,6 +75,7 @@ document.addEventListener("DOMContentLoaded", () => {
     form.append("file", file);
     if (uploadCaption.value.trim()) form.append("caption", uploadCaption.value.trim());
     if (uploadName.value.trim()) form.append("name", uploadName.value.trim());
+    form.append("kind", uploadKind.value);
     uploadBtn.disabled = true;
     uploadStatus.textContent = "Uploading…";
     uploadStatus.className = "form-status";
@@ -88,7 +90,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       uploadStatus.textContent = "Added to the gallery.";
       uploadStatus.className = "form-status ok";
-      uploadFile.value = ""; uploadCaption.value = ""; uploadName.value = "";
+      uploadFile.value = ""; uploadCaption.value = ""; uploadName.value = ""; uploadKind.value = "photo";
       approvedList.innerHTML = "";
       await loadApproved();
     } catch (err) {
@@ -125,7 +127,7 @@ document.addEventListener("DOMContentLoaded", () => {
       `${escapeHtml(item.caption || "(no caption)")}<br>` +
       `<small>${escapeHtml(item.filename || "")} · ${formatSize(item.size)} · ${escapeHtml(when)}</small>`;
 
-    card.append(img, meta, actionButtons((action) => moderate("submissions", item.id, action, card, photosNote, "No pending photos 🎉")));
+    card.append(img, meta, kindSelect(item), actionButtons((action) => moderate("submissions", item.id, action, card, photosNote, "No pending photos 🎉")));
     photosList.appendChild(card);
   }
 
@@ -172,7 +174,7 @@ document.addEventListener("DOMContentLoaded", () => {
     del.addEventListener("click", () => deleteApproved(item.id, card));
     actions.append(del);
 
-    card.append(img, meta, actions);
+    card.append(img, meta, kindSelect(item), actions);
     approvedList.appendChild(card);
   }
 
@@ -218,6 +220,44 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // --- Shared -----------------------------------------------------------
+  // Photo/artwork tag selector. Persists immediately on change.
+  function kindSelect(item) {
+    const wrap = document.createElement("div");
+    wrap.className = "kind-row";
+    const label = document.createElement("label");
+    label.textContent = "Type ";
+    const sel = document.createElement("select");
+    [["photo", "Photo"], ["artwork", "Artwork"]].forEach(([value, text]) => {
+      const opt = document.createElement("option");
+      opt.value = value; opt.textContent = text;
+      sel.appendChild(opt);
+    });
+    sel.value = item.kind === "artwork" ? "artwork" : "photo";
+    sel.addEventListener("change", () => setKind(item.id, sel.value, sel));
+    label.appendChild(sel);
+    wrap.appendChild(label);
+    return wrap;
+  }
+
+  async function setKind(id, kind, sel) {
+    const prev = sel.dataset.prev || (kind === "artwork" ? "photo" : "artwork");
+    sel.disabled = true;
+    try {
+      const res = await fetch(`${apiBase}/admin/submissions/${id}/kind`, {
+        method: "POST",
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ kind }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      sel.dataset.prev = kind;
+    } catch (err) {
+      sel.value = prev; // revert on failure
+      setStatus(`Could not change type: ${err.message}`, "err");
+    } finally {
+      sel.disabled = false;
+    }
+  }
+
   function actionButtons(onAction) {
     const actions = document.createElement("div");
     actions.className = "actions";
