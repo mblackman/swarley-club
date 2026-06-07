@@ -79,7 +79,7 @@ async function loadCommunity() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const items = await res.json();
     if (!Array.isArray(items) || items.length === 0) {
-      if (empty) empty.textContent = "No shared photos yet — be the first to add one!";
+      if (empty) empty.textContent = "No shared photos yet — be the first to add one of the best boy. 🐾";
       return;
     }
     if (empty) empty.style.display = "none";

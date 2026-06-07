@@ -65,7 +65,7 @@ async function loadMemories() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const items = await res.json();
     if (!Array.isArray(items) || items.length === 0) {
-      if (empty) empty.textContent = "No memories yet — be the first to share one.";
+      if (empty) empty.textContent = "No memories yet — be the first to share one. 💛";
       return;
     }
     if (empty) empty.style.display = "none";

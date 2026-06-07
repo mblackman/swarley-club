@@ -14,22 +14,22 @@ document.addEventListener('DOMContentLoaded', () => {
     // Respect users who prefer reduced motion (important on a memorial page).
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    // --- Swarley Facts ---
+    // --- Things we'll always remember about Swarley ---
     const facts = [
-        "Accepts pats with tiny, appreciative whimpers.",
-        "A distinguished gentleman rocking the senior dog vibe.",
-        "Finds pure joy frolicking in freshly fallen snow.",
-        "Considers snow and grass to be seasonal delicacies.",
+        "Accepted pats with tiny, appreciative whimpers.",
+        "A distinguished gentleman who wore the senior-dog vibe proudly.",
+        "Found pure joy frolicking in freshly fallen snow.",
+        "Considered snow and grass to be seasonal delicacies.",
         "Once cleared a coffee table in a single leap, just because.",
-        "Achieves supersonic flight speeds (only in his dreams).",
-        "Believes water belongs strictly inside the bowl. No exceptions.",
-        "Fondly remembers his 'Era of Maximum Fluffiness'.",
-        "Warning: May cause spontaneous hugging due to extreme natural fluffiness.",
-        "Possesses a signature scent known only as 'Eau de Swarley'.",
-        " A professional cuddler and human bed-warming expert.",
-        "Views overly-fluffy white dogs with deep suspicion.",
-        "Functions as a highly efficient 'love sponge', absorbing all available affection.",
-        "An aspiring interior designer, known for spontaneous bed rearrangement."
+        "Achieved supersonic flight speeds (only in his dreams).",
+        "Believed water belonged strictly inside the bowl. No exceptions.",
+        "Will be fondly remembered for his 'Era of Maximum Fluffiness'.",
+        "Caused spontaneous hugging, thanks to extreme natural fluffiness.",
+        "Carried a signature scent known only as 'Eau de Swarley'.",
+        "A professional cuddler and expert human bed-warmer.",
+        "Regarded overly-fluffy white dogs with deep suspicion.",
+        "A highly efficient 'love sponge', absorbing all available affection.",
+        "An aspiring interior designer, famous for spontaneous bed rearrangement."
     ];
 
     const allSwarleyPics = [
