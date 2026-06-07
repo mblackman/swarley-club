@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swarley — Moderation</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Poppins:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Moderation</h1>
+            <p class="subtitle">Pending photo submissions</p>
+        </header>
+
+        <main>
+            <div class="form-field" id="tokenRow">
+                <label for="token">Admin token</label>
+                <input type="password" id="token" placeholder="Paste your admin token">
+                <p><button class="submit-btn" id="loadBtn">Load pending</button>
+                   <button class="submit-btn" id="logoutBtn" style="display:none;">Forget token</button></p>
+            </div>
+
+            <p id="status" class="form-status" role="status" aria-live="polite"></p>
+            <div id="pendingList"></div>
+        </main>
+
+        <footer>
+            <p>In loving memory of Swarles Barkley. 🐾</p>
+        </footer>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html>

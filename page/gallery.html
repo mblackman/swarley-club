@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swarley — Gallery</title>
+    <meta name="description" content="A gallery of photos of Swarles Barkley, the best boy.">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+
+    <meta property="og:title" content="Swarley — Gallery">
+    <meta property="og:description" content="A gallery of photos of Swarles Barkley, the best boy.">
+    <meta property="og:image" content="https://swarley.club/images/preview.jpg">
+    <meta property="og:url" content="https://swarley.club/gallery.html">
+    <meta property="og:type" content="website">
+
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Poppins:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Swarley's Gallery</h1>
+            <p class="subtitle">Every angle of the best boy 🐾</p>
+        </header>
+
+        <nav class="site-nav" aria-label="Primary">
+            <a href="index.html">Home</a>
+            <a href="gallery.html" aria-current="page">Gallery</a>
+            <a href="submit.html">Share a Photo</a>
+        </nav>
+
+        <main>
+            <h2 class="section-label">Our Favorite Photos</h2>
+            <div id="curatedGallery" class="gallery-grid"></div>
+
+            <h2 class="section-label">From Everyone Who Loved Him</h2>
+            <p class="gallery-empty" id="communityEmpty">Loading shared photos…</p>
+            <div id="communityGallery" class="gallery-grid"></div>
+
+            <section class="memorial-section cta">
+                <p>Have a photo or piece of art of Swarley to share?</p>
+                <a class="btn-link" href="submit.html">Share a photo 💛</a>
+            </section>
+        </main>
+
+        <footer>
+            <p>In loving memory of Swarles Barkley. Forever the best boy. 🐾</p>
+        </footer>
+    </div>
+
+    <!-- Lightbox overlay -->
+    <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer">
+        <button class="lb-close" id="lbClose" aria-label="Close">&times;</button>
+        <button class="lb-prev" id="lbPrev" aria-label="Previous photo">&#8249;</button>
+        <button class="lb-next" id="lbNext" aria-label="Next photo">&#8250;</button>
+        <figure>
+            <img id="lbImg" src="" alt="">
+            <figcaption id="lbCaption"></figcaption>
+        </figure>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="gallery.js"></script>
+</body>
+</html>

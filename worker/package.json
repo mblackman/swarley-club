@@ -3,6 +3,11 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:dev": "wrangler deploy --env dev",
+    "migrate": "wrangler d1 migrations apply swarley-club --remote",
+    "migrate:dev": "wrangler d1 migrations apply swarley-club-dev --env dev --remote",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -11,5 +16,8 @@
   "description": "",
   "dependencies": {
     "hono": "^4.7.7"
+  },
+  "devDependencies": {
+    "wrangler": "^4.98.0"
   }
 }

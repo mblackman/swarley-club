@@ -5,8 +5,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const swarleyFactP = document.getElementById('swarleyFact');
     const barkSound = document.getElementById('barkSound');
     const clubTitle = document.querySelector('h1');
+    const favoritesList = document.getElementById('favoritesList');
 
-    const counterApiUrl = '/api/counter';
+    // API base resolves to prod ("/api") or the dev Worker — see config.js
+    const apiBase = (window.SWARLEY && window.SWARLEY.API_BASE) || '/api';
+    const counterApiUrl = `${apiBase}/counter`;
+
+    // Respect users who prefer reduced motion (important on a memorial page).
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     // --- Swarley Facts ---
     const facts = [
@@ -49,6 +55,17 @@ document.addEventListener('DOMContentLoaded', () => {
             swarleyFactP.textContent = facts[randomIndex];
             swarleyFactP.classList.add('fact-loaded');
         }
+    }
+
+    // Populate the "A Few of His Favorite Things" list from the facts above.
+    function renderFavorites() {
+        if (!favoritesList) return;
+        favoritesList.innerHTML = '';
+        facts.forEach((fact) => {
+            const li = document.createElement('li');
+            li.textContent = fact.trim();
+            favoritesList.appendChild(li);
+        });
     }
 
     function loadSwarleyPics() {
@@ -144,6 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Initial Load Actions ---
     displayRandomFact();
+    renderFavorites();
     fetchInitialCount();
     loadSwarleyPics();
 
@@ -153,16 +171,26 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("Join button clicked!");
             joinButton.disabled = true; // Disable button immediately
 
-            // --- Actions to perform on EVERY click ---
-            try { confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } }); } catch (e) { console.error("Confetti error:", e); }
-            dogPics.forEach((pic, index) => {
-                if (index % 2 === 0) {
-                    pic.classList.add('dancing-1');
-                } else {
-                    pic.classList.add('dancing-2');
-                }
-            });
-            if (barkSound) { try { barkSound.currentTime = 0; await barkSound.play(); } catch (e) { console.error("Audio play failed:", e); } }
+            // --- Gentle, warm "candle glow" celebration (skipped if reduced motion) ---
+            if (!prefersReducedMotion) {
+                try {
+                    confetti({
+                        particleCount: 60,
+                        spread: 55,
+                        startVelocity: 28,
+                        gravity: 0.8,
+                        scalar: 0.9,
+                        ticks: 160,
+                        origin: { y: 0.6 },
+                        colors: ['#ffb347', '#ffcc66', '#ffe0a3', '#fff5e0'],
+                    });
+                } catch (e) { console.error("Confetti error:", e); }
+                dogPics.forEach((pic, index) => {
+                    pic.classList.add(index % 2 === 0 ? 'dancing-1' : 'dancing-2');
+                });
+            }
+            // A little remembrance of his bark (no-op if the sound file is absent).
+            if (barkSound) { try { barkSound.currentTime = 0; await barkSound.play(); } catch (e) { /* fine — sound is optional */ } }
 
             await incrementAndFetchCounter();
 

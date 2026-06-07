@@ -1,8 +1,18 @@
 import { createHash } from 'node:crypto';
 
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 
 const app = new Hono();
+
+// CORS for all API routes. The dev preview page lives on *.pages.dev and calls
+// the dev Worker cross-origin, so preflight (triggered by the Authorization
+// header on admin routes) must be handled.
+app.use('/api/*', cors({
+  origin: '*',
+  allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization'],
+}));
 
 const responseHeaders = {
   'Content-Type': 'application/json',
@@ -10,6 +20,19 @@ const responseHeaders = {
   'Cache-Control': 'no-cache, no-store, must-revalidate',
 };
 
+// --- Submission config (keep in sync with page/submit.js) -------------------
+const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+const EXT_BY_MIME = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+};
+const MAX_SIZE = 8 * 1024 * 1024; // 8 MB
+
+// ===========================================================================
+// Counter (unchanged)
+// ===========================================================================
 async function getCount(c) {
   const { results } = await c.env.DB.prepare(`
     SELECT COUNT(*) AS unique_count FROM unique_visits;
@@ -60,10 +83,10 @@ app.post("/api/counter", async (c) => {
       `
     ).bind(id, timestamp)
     .run();
-    
+
     const count = await getCount(c);
     if (success) {
-      return c.json({ count: count }, 200, responseHeaders);  
+      return c.json({ count: count }, 200, responseHeaders);
     }
     return c.json({ error: 'Failed to update count' }, 500, responseHeaders);
   } catch (error) {
@@ -73,6 +96,238 @@ app.post("/api/counter", async (c) => {
       500,
       responseHeaders
     );
+  }
+});
+
+// ===========================================================================
+// Submissions
+// ===========================================================================
+
+// Verify a Cloudflare Turnstile token server-side.
+async function verifyTurnstile(c, token) {
+  if (!c.env.TURNSTILE_SECRET) {
+    console.error('TURNSTILE_SECRET is not set');
+    return false;
+  }
+  const form = new URLSearchParams();
+  form.append('secret', c.env.TURNSTILE_SECRET);
+  form.append('response', token || '');
+  const ip = c.req.header('CF-Connecting-IP');
+  if (ip) form.append('remoteip', ip);
+  try {
+    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      body: form,
+    });
+    const data = await res.json();
+    return data.success === true;
+  } catch (err) {
+    console.error('Turnstile verify failed:', err);
+    return false;
+  }
+}
+
+// Bearer-token admin guard.
+async function requireAdmin(c, next) {
+  const auth = c.req.header('Authorization') || '';
+  const token = auth.replace(/^Bearer\s+/i, '');
+  if (!c.env.ADMIN_TOKEN || token !== c.env.ADMIN_TOKEN) {
+    return c.json({ error: 'Unauthorized' }, 401, responseHeaders);
+  }
+  await next();
+}
+
+// POST /api/submissions — public upload (stored as 'pending').
+app.post('/api/submissions', async (c) => {
+  let body;
+  try {
+    body = await c.req.parseBody();
+  } catch (err) {
+    return c.json({ error: 'Invalid form data' }, 400, responseHeaders);
+  }
+
+  // 1) Turnstile first — cheapest rejection for bots.
+  const ok = await verifyTurnstile(c, body['cf-turnstile-response']);
+  if (!ok) {
+    return c.json({ error: 'Verification failed. Please try again.' }, 403, responseHeaders);
+  }
+
+  // 2) Validate the file.
+  const file = body['file'];
+  if (!file || typeof file === 'string' || typeof file.arrayBuffer !== 'function') {
+    return c.json({ error: 'No image was provided' }, 400, responseHeaders);
+  }
+  if (!ALLOWED_MIME.has(file.type)) {
+    return c.json({ error: 'Unsupported image type' }, 400, responseHeaders);
+  }
+  if (file.size <= 0 || file.size > MAX_SIZE) {
+    return c.json({ error: 'Image must be between 1 byte and 8 MB' }, 400, responseHeaders);
+  }
+
+  // 3) Store in R2 + record as pending.
+  try {
+    const id = crypto.randomUUID();
+    const ext = EXT_BY_MIME[file.type];
+    const key = `submissions/${id}.${ext}`;
+    const submitter = String(body['name'] || '').slice(0, 80) || null;
+    const caption = String(body['caption'] || '').slice(0, 500) || null;
+    const filename = (file.name ? String(file.name) : '').slice(0, 255) || null;
+
+    await c.env.SUBMISSIONS_BUCKET.put(key, file.stream(), {
+      httpMetadata: { contentType: file.type },
+    });
+
+    await c.env.DB.prepare(`
+      INSERT INTO submissions
+        (id, r2_key, filename, submitter, caption, mime, size, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?);
+    `).bind(id, key, filename, submitter, caption, file.type, file.size, Date.now()).run();
+
+    return c.json({ ok: true }, 201, responseHeaders);
+  } catch (err) {
+    console.error('Submission error:', err);
+    return c.json({ error: 'Could not save submission', details: err.message }, 500, responseHeaders);
+  }
+});
+
+// GET /api/submissions — public list of APPROVED submissions only.
+app.get('/api/submissions', async (c) => {
+  try {
+    const { results } = await c.env.DB.prepare(`
+      SELECT id, submitter, caption, created_at
+      FROM submissions
+      WHERE status = 'approved'
+      ORDER BY created_at DESC;
+    `).all();
+    const items = (results || []).map((r) => ({
+      id: r.id,
+      submitter: r.submitter,
+      caption: r.caption,
+      created_at: r.created_at,
+      imageUrl: `/api/submissions/${r.id}/image`,
+    }));
+    return c.json(items, 200, responseHeaders);
+  } catch (err) {
+    console.error('List submissions error:', err);
+    return c.json({ error: 'Could not list submissions' }, 500, responseHeaders);
+  }
+});
+
+// GET /api/submissions/:id/image — stream from R2.
+// Approved images are public + cacheable. Pending/rejected require an admin
+// bearer token (used by the moderation UI); otherwise 404 (no enumeration).
+app.get('/api/submissions/:id/image', async (c) => {
+  const id = c.req.param('id');
+  try {
+    const row = await c.env.DB.prepare(`
+      SELECT r2_key, mime, status FROM submissions WHERE id = ?;
+    `).bind(id).first();
+    if (!row) return c.json({ error: 'Not found' }, 404, responseHeaders);
+
+    let cacheControl;
+    if (row.status === 'approved') {
+      cacheControl = 'public, max-age=31536000, immutable';
+    } else {
+      // Non-public image: only an authenticated admin may view it.
+      const auth = c.req.header('Authorization') || '';
+      const token = auth.replace(/^Bearer\s+/i, '');
+      if (!c.env.ADMIN_TOKEN || token !== c.env.ADMIN_TOKEN) {
+        return c.json({ error: 'Not found' }, 404, responseHeaders);
+      }
+      cacheControl = 'no-store';
+    }
+
+    const obj = await c.env.SUBMISSIONS_BUCKET.get(row.r2_key);
+    if (!obj) return c.json({ error: 'Not found' }, 404, responseHeaders);
+
+    return new Response(obj.body, {
+      status: 200,
+      headers: {
+        'Content-Type': row.mime,
+        'Cache-Control': cacheControl,
+        'Access-Control-Allow-Origin': '*',
+      },
+    });
+  } catch (err) {
+    console.error('Serve image error:', err);
+    return c.json({ error: 'Could not load image' }, 500, responseHeaders);
+  }
+});
+
+// ===========================================================================
+// Admin moderation (Bearer ADMIN_TOKEN)
+// ===========================================================================
+
+// GET /api/admin/submissions — list pending.
+app.get('/api/admin/submissions', requireAdmin, async (c) => {
+  try {
+    const { results } = await c.env.DB.prepare(`
+      SELECT id, filename, submitter, caption, mime, size, created_at
+      FROM submissions
+      WHERE status = 'pending'
+      ORDER BY created_at ASC;
+    `).all();
+    return c.json(results || [], 200, responseHeaders);
+  } catch (err) {
+    console.error('Admin list error:', err);
+    return c.json({ error: 'Could not list submissions' }, 500, responseHeaders);
+  }
+});
+
+// POST /api/admin/submissions/:id — approve or reject.
+app.post('/api/admin/submissions/:id', requireAdmin, async (c) => {
+  const id = c.req.param('id');
+  let action;
+  try {
+    ({ action } = await c.req.json());
+  } catch {
+    return c.json({ error: 'Invalid body' }, 400, responseHeaders);
+  }
+  if (action !== 'approve' && action !== 'reject') {
+    return c.json({ error: 'action must be "approve" or "reject"' }, 400, responseHeaders);
+  }
+
+  try {
+    const row = await c.env.DB.prepare(`
+      SELECT r2_key FROM submissions WHERE id = ?;
+    `).bind(id).first();
+    if (!row) return c.json({ error: 'Not found' }, 404, responseHeaders);
+
+    const status = action === 'approve' ? 'approved' : 'rejected';
+    await c.env.DB.prepare(`
+      UPDATE submissions SET status = ?, reviewed_at = ? WHERE id = ?;
+    `).bind(status, Date.now(), id).run();
+
+    // Free the storage for rejected images.
+    if (action === 'reject') {
+      try { await c.env.SUBMISSIONS_BUCKET.delete(row.r2_key); }
+      catch (e) { console.error('R2 delete failed:', e); }
+    }
+
+    return c.json({ ok: true, status }, 200, responseHeaders);
+  } catch (err) {
+    console.error('Moderate error:', err);
+    return c.json({ error: 'Could not update submission' }, 500, responseHeaders);
+  }
+});
+
+// DELETE /api/admin/submissions/:id — fully remove (e.g. an already-approved item).
+app.delete('/api/admin/submissions/:id', requireAdmin, async (c) => {
+  const id = c.req.param('id');
+  try {
+    const row = await c.env.DB.prepare(`
+      SELECT r2_key FROM submissions WHERE id = ?;
+    `).bind(id).first();
+    if (!row) return c.json({ error: 'Not found' }, 404, responseHeaders);
+
+    try { await c.env.SUBMISSIONS_BUCKET.delete(row.r2_key); }
+    catch (e) { console.error('R2 delete failed:', e); }
+    await c.env.DB.prepare(`DELETE FROM submissions WHERE id = ?;`).bind(id).run();
+
+    return c.json({ ok: true }, 200, responseHeaders);
+  } catch (err) {
+    console.error('Delete error:', err);
+    return c.json({ error: 'Could not delete submission' }, 500, responseHeaders);
   }
 });
 

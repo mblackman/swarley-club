@@ -89,8 +89,8 @@ header .subtitle {
     font-weight: 700;
     font-size: 1.4em;
     padding: 15px 30px;
-    background: linear-gradient(45deg, #4CAF50, #8BC34A);
-    color: white;
+    background: linear-gradient(45deg, #ffb347, #ffcc66);
+    color: #5a3d00;
     border: none;
     border-radius: 50px;
     cursor: pointer; /* Already set globally, but good to be specific */
@@ -104,9 +104,9 @@ header .subtitle {
 
 @media (hover: hover) {
     #joinButton:hover {
-        background: linear-gradient(45deg, #388E3C, #689F38);
+        background: linear-gradient(45deg, #ffa42b, #ffc24d);
         box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-        animation: wiggle 0.3s ease-in-out infinite;
+        transform: translateY(-2px); /* gentle lift instead of a playful wiggle */
     }
 }
 
@@ -220,6 +220,302 @@ footer {
   50% { transform: rotate(2deg); }
 }
 
+
+/* =====================================================================
+   Memorial additions
+   ===================================================================== */
+:root {
+    --pink: #E91E63;
+    --memorial-accent: #c2708f; /* softer muted rose for headings/dates */
+    --candle: #ffb347;
+    --text: #333;
+    --muted: #555;
+    --card-bg: rgba(255, 255, 255, 0.92);
+}
+
+/* Make the candle button's inline-white paw icons match the warm text color */
+#joinButton .icon path { fill: #5a3d00 !important; }
+
+/* Dates line under the title */
+header .dates {
+    margin-top: 8px;
+    color: var(--memorial-accent);
+    letter-spacing: 0.04em;
+    font-weight: 700;
+}
+
+/* --- Primary navigation --- */
+.site-nav {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px 24px;
+    margin: 18px 0 4px;
+}
+.site-nav a {
+    color: var(--memorial-accent);
+    text-decoration: none;
+    font-weight: 700;
+    padding: 4px 6px;
+    border-bottom: 2px solid transparent;
+}
+.site-nav a:hover { border-bottom-color: var(--memorial-accent); }
+.site-nav a[aria-current="page"] { border-bottom-color: var(--memorial-accent); }
+
+/* --- Memorial content sections --- */
+.memorial-section {
+    text-align: left;
+    max-width: 640px;
+    margin: 36px auto 0;
+    line-height: 1.7;
+}
+.memorial-section h2 {
+    font-family: 'Pacifico', cursive;
+    color: var(--memorial-accent);
+    font-size: 1.8em;
+    text-align: center;
+    margin-bottom: 16px;
+}
+.favorites-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.favorites-list li {
+    position: relative;
+    padding: 6px 0 6px 28px;
+}
+.favorites-list li::before {
+    content: "🐾";
+    position: absolute;
+    left: 0;
+    top: 6px;
+    font-size: 0.9em;
+}
+
+/* --- Life timeline --- */
+.timeline {
+    list-style: none;
+    padding: 0;
+    margin: 0 auto;
+    max-width: 520px;
+    border-left: 2px dashed #e6b8c8;
+}
+.timeline li {
+    position: relative;
+    padding: 0 0 18px 24px;
+}
+.timeline li::before {
+    content: "";
+    position: absolute;
+    left: -7px;
+    top: 4px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--memorial-accent);
+}
+.timeline .when {
+    display: block;
+    font-weight: 700;
+    color: var(--memorial-accent);
+}
+.timeline .what { color: var(--muted); }
+
+/* --- Call-to-action buttons / link buttons --- */
+.cta { text-align: center; }
+.cta p { margin-bottom: 14px; }
+.btn-link {
+    display: inline-block;
+    margin: 6px 8px;
+    padding: 12px 24px;
+    border-radius: 50px;
+    background: linear-gradient(45deg, #ffb347, #ffcc66);
+    color: #5a3d00;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.12);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.btn-link.secondary {
+    background: #fff;
+    color: var(--memorial-accent);
+    border: 2px solid var(--memorial-accent);
+}
+.btn-link:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18); }
+
+/* --- Gallery grid (gallery.html) --- */
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 14px;
+    margin: 24px 0;
+}
+.gallery-grid figure {
+    margin: 0;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+    cursor: pointer;
+}
+.gallery-grid img {
+    display: block;
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+.gallery-grid figure:hover img { transform: scale(1.05); }
+.gallery-grid figcaption {
+    padding: 8px 10px;
+    font-size: 0.85em;
+    color: var(--muted);
+    text-align: left;
+}
+.gallery-empty { color: var(--muted); font-style: italic; }
+.section-label {
+    font-family: 'Pacifico', cursive;
+    color: var(--memorial-accent);
+    font-size: 1.6em;
+    margin-top: 30px;
+}
+
+/* --- Lightbox --- */
+.lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 10, 16, 0.88);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    padding: 24px;
+}
+.lightbox.open { display: flex; }
+.lightbox figure {
+    margin: 0;
+    max-width: 92vw;
+    max-height: 92vh;
+    text-align: center;
+}
+.lightbox img {
+    max-width: 92vw;
+    max-height: 80vh;
+    border-radius: 8px;
+    border: 6px solid #fff;
+    box-sizing: border-box;
+}
+.lightbox figcaption {
+    color: #fff;
+    margin-top: 12px;
+    font-size: 0.95em;
+}
+.lightbox button {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    font-size: 1.6em;
+    line-height: 1;
+    cursor: pointer;
+}
+.lightbox button:hover { background: rgba(255, 255, 255, 0.3); }
+.lb-close { top: 16px; right: 16px; }
+.lb-prev { left: 16px; top: 50%; transform: translateY(-50%); }
+.lb-next { right: 16px; top: 50%; transform: translateY(-50%); }
+
+/* --- Forms (submit.html / admin.html) --- */
+.form-field { text-align: left; margin: 16px 0; }
+.form-field label {
+    display: block;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: var(--muted);
+}
+.form-field input[type="text"],
+.form-field input[type="file"],
+.form-field input[type="password"],
+.form-field textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #e0c4d0;
+    border-radius: 8px;
+    font-family: 'Poppins', sans-serif;
+    box-sizing: border-box;
+}
+.form-field textarea { min-height: 80px; resize: vertical; }
+.preview-img {
+    display: none;
+    max-width: 100%;
+    max-height: 320px;
+    margin: 12px auto;
+    border-radius: 8px;
+    border: 6px solid #fff;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+.form-status {
+    margin-top: 16px;
+    min-height: 1.4em;
+    font-weight: 700;
+}
+.form-status.ok { color: #2e7d32; }
+.form-status.err { color: #c62828; }
+.submit-btn {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    font-size: 1.1em;
+    padding: 12px 28px;
+    border: none;
+    border-radius: 50px;
+    background: linear-gradient(45deg, #ffb347, #ffcc66);
+    color: #5a3d00;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.12);
+}
+.submit-btn:disabled { opacity: 0.6; cursor: default; }
+
+/* --- Admin moderation cards --- */
+.admin-card {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    text-align: left;
+    background: #fff;
+    border-radius: 10px;
+    padding: 12px;
+    margin: 12px 0;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+}
+.admin-card img {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+.admin-card .meta { flex: 1; font-size: 0.9em; color: var(--muted); }
+.admin-card .actions { display: flex; flex-direction: column; gap: 8px; }
+.admin-card .approve, .admin-card .reject {
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.admin-card .approve { background: #2e7d32; color: #fff; }
+.admin-card .reject { background: #c62828; color: #fff; }
+
+/* --- Respect reduced-motion (memorial-critical) --- */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+    }
+    header h1 { opacity: 1; transform: none; }
+}
 
 /* --- Responsive Adjustments --- */
 @media (max-width: 600px) {

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swarley — Share a Photo</title>
+    <meta name="description" content="Share your favorite photo or art of Swarles Barkley.">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Poppins:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Share a Photo</h1>
+            <p class="subtitle">Help us remember Swarley together 💛</p>
+        </header>
+
+        <nav class="site-nav" aria-label="Primary">
+            <a href="index.html">Home</a>
+            <a href="gallery.html">Gallery</a>
+            <a href="submit.html" aria-current="page">Share a Photo</a>
+        </nav>
+
+        <main>
+            <section class="memorial-section">
+                <p>Have a favorite photo or a piece of art of Swarley? Share it here. Every
+                submission is reviewed before it appears in the gallery, so it may take a
+                little while to show up. Thank you for helping keep his memory alive. 🐾</p>
+
+                <form id="submitForm">
+                    <div class="form-field">
+                        <label for="photo">Photo or art *</label>
+                        <input type="file" id="photo" name="file" accept="image/jpeg,image/png,image/webp,image/gif" required>
+                        <img id="preview" class="preview-img" alt="Preview of your photo">
+                    </div>
+
+                    <div class="form-field">
+                        <label for="submitter">Your name (optional)</label>
+                        <input type="text" id="submitter" name="name" maxlength="80" placeholder="So we can credit you">
+                    </div>
+
+                    <div class="form-field">
+                        <label for="caption">Caption or memory (optional)</label>
+                        <textarea id="caption" name="caption" maxlength="500" placeholder="A few words about this photo…"></textarea>
+                    </div>
+
+                    <!-- TODO(dev): replace data-sitekey with your Cloudflare Turnstile SITE key
+                         (public). For local/dev testing you can use Turnstile's always-passing
+                         test site key: 1x00000000000000000000AA -->
+                    <div class="cf-turnstile" data-sitekey="YOUR_TURNSTILE_SITE_KEY"></div>
+
+                    <p>
+                        <button type="submit" class="submit-btn" id="submitBtn">Share photo</button>
+                    </p>
+                    <p id="status" class="form-status" role="status" aria-live="polite"></p>
+                </form>
+            </section>
+        </main>
+
+        <footer>
+            <p>In loving memory of Swarles Barkley. Forever the best boy. 🐾</p>
+        </footer>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="submit.js"></script>
+</body>
+</html>

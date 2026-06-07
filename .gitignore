@@ -1,3 +1,5 @@
 .wrangler
 worker/node_modules
 **/.dev.vars
+# Local agent/LLM scratchpad — agent-facing docs, notes, indexes (not part of the project)
+.agent/
