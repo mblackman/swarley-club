@@ -20,6 +20,14 @@ database_id = "4fd463ae-0c35-4736-91a7-c40fbd703f78"
 binding = "SUBMISSIONS_BUCKET"
 bucket_name = "swarley-submissions"
 
+# Email notifications via Cloudflare Email Routing. Requires Email Routing to be
+# enabled on swarley.club and mateoblackman@gmail.com verified as a destination
+# address. Restricting destination_address means this binding can only ever mail
+# that one address.
+[[send_email]]
+name = "SEND_EMAIL"
+destination_address = "mateoblackman@gmail.com"
+
 # ---------------------------------------------------------------------------
 # DEV environment — fully isolated from production.
 # Deploy with:  npx wrangler deploy --env dev
@@ -41,3 +49,7 @@ database_id = "PLACEHOLDER_DEV_D1_ID"
 [[env.dev.r2_buckets]]
 binding = "SUBMISSIONS_BUCKET"
 bucket_name = "swarley-submissions-dev"
+
+[[env.dev.send_email]]
+name = "SEND_EMAIL"
+destination_address = "mateoblackman@gmail.com"

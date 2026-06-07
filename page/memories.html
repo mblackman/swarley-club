@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swarley — Memories</title>
+    <meta name="description" content="Leave a memory of Swarles Barkley, the best boy.">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+
+    <meta property="og:title" content="Swarley — Memories">
+    <meta property="og:description" content="Leave a memory of Swarles Barkley, the best boy.">
+    <meta property="og:image" content="https://swarley.club/images/preview.jpg">
+    <meta property="og:url" content="https://swarley.club/memories.html">
+    <meta property="og:type" content="website">
+
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Poppins:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Memories</h1>
+            <p class="subtitle">Share a memory of the best boy 💛</p>
+        </header>
+
+        <nav class="site-nav" aria-label="Primary">
+            <a href="index.html">Home</a>
+            <a href="gallery.html">Gallery</a>
+            <a href="memories.html" aria-current="page">Memories</a>
+            <a href="submit.html">Share a Photo</a>
+        </nav>
+
+        <main>
+            <section class="memorial-section">
+                <p>Did Swarley brighten your day? Share a memory, a moment, or just a kind
+                word. Every message is read before it's posted, so it may take a little
+                while to appear below.</p>
+
+                <form id="memoryForm">
+                    <div class="form-field">
+                        <label for="author">Your name (optional)</label>
+                        <input type="text" id="author" name="author" maxlength="80" placeholder="Anonymous">
+                    </div>
+                    <div class="form-field">
+                        <label for="message">Your memory *</label>
+                        <textarea id="message" name="message" maxlength="2000" required placeholder="Write your memory of Swarley…"></textarea>
+                    </div>
+
+                    <!-- TODO(dev): replace data-sitekey with your Cloudflare Turnstile SITE key
+                         (public). For local/dev testing use the always-passing test key:
+                         1x00000000000000000000AA -->
+                    <div class="cf-turnstile" data-sitekey="YOUR_TURNSTILE_SITE_KEY"></div>
+
+                    <p><button type="submit" class="submit-btn" id="memoryBtn">Leave a memory</button></p>
+                    <p id="status" class="form-status" role="status" aria-live="polite"></p>
+                </form>
+            </section>
+
+            <h2 class="section-label">In Their Words</h2>
+            <p class="gallery-empty" id="memoriesEmpty">Loading memories…</p>
+            <div id="memoriesList" class="memories-list"></div>
+        </main>
+
+        <footer>
+            <p>In loving memory of Swarles Barkley. Forever the best boy. 🐾</p>
+        </footer>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="memories.js"></script>
+</body>
+</html>

@@ -508,6 +508,35 @@ header .dates {
 .admin-card .approve { background: #2e7d32; color: #fff; }
 .admin-card .reject { background: #c62828; color: #fff; }
 
+/* --- Guestbook memories --- */
+.memories-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin: 20px 0;
+    text-align: left;
+}
+.memory-card {
+    margin: 0;
+    background: #fff;
+    border-left: 4px solid var(--memorial-accent);
+    border-radius: 8px;
+    padding: 16px 18px;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+}
+.memory-message {
+    margin: 0 0 8px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+.memory-author {
+    color: var(--memorial-accent);
+    font-style: normal;
+    font-weight: 700;
+    font-size: 0.9em;
+}
+
 /* --- Respect reduced-motion (memorial-critical) --- */
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {

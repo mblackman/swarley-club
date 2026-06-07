@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { EmailMessage } from "cloudflare:email";
+import { createMimeMessage } from "mimetext";
 
 const app = new Hono();
 
@@ -29,6 +31,32 @@ const EXT_BY_MIME = {
   'image/gif': 'gif',
 };
 const MAX_SIZE = 8 * 1024 * 1024; // 8 MB
+
+// --- Guestbook config (keep in sync with page/memories.js) ------------------
+const MAX_MESSAGE = 2000;
+const MAX_AUTHOR = 80;
+
+// --- Email notifications (Cloudflare Email Routing) -------------------------
+const NOTIFY_FROM = 'notify@swarley.club';
+const NOTIFY_TO = 'mateoblackman@gmail.com';
+const ADMIN_URL = 'https://swarley.club/admin.html';
+
+// Best-effort email notification. Never throws — call via executionCtx.waitUntil
+// so a mail failure can't fail the visitor's submission.
+async function sendNotification(c, subject, text) {
+  if (!c.env.SEND_EMAIL) return; // binding absent (e.g. `wrangler dev` locally)
+  try {
+    const msg = createMimeMessage();
+    msg.setSender({ name: 'Swarley Club', addr: NOTIFY_FROM });
+    msg.setRecipient(NOTIFY_TO);
+    msg.setSubject(subject);
+    msg.addMessage({ contentType: 'text/plain', data: text });
+    const email = new EmailMessage(NOTIFY_FROM, NOTIFY_TO, msg.asRaw());
+    await c.env.SEND_EMAIL.send(email);
+  } catch (err) {
+    console.error('Email notification failed:', err);
+  }
+}
 
 // ===========================================================================
 // Counter (unchanged)
@@ -183,6 +211,16 @@ app.post('/api/submissions', async (c) => {
       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?);
     `).bind(id, key, filename, submitter, caption, file.type, file.size, Date.now()).run();
 
+    c.executionCtx.waitUntil(sendNotification(
+      c,
+      '📸 New photo awaiting approval — Swarley Club',
+      `A new photo was submitted and is waiting for your approval.\n\n` +
+        `From: ${submitter || 'Anonymous'}\n` +
+        `Caption: ${caption || '(none)'}\n` +
+        `File: ${filename || '(unknown)'}\n\n` +
+        `Review it here: ${ADMIN_URL}`
+    ));
+
     return c.json({ ok: true }, 201, responseHeaders);
   } catch (err) {
     console.error('Submission error:', err);
@@ -328,6 +366,128 @@ app.delete('/api/admin/submissions/:id', requireAdmin, async (c) => {
   } catch (err) {
     console.error('Delete error:', err);
     return c.json({ error: 'Could not delete submission' }, 500, responseHeaders);
+  }
+});
+
+// ===========================================================================
+// Guestbook ("leave a memory")
+// ===========================================================================
+
+// POST /api/memories — public text submission (stored as 'pending').
+app.post('/api/memories', async (c) => {
+  let payload;
+  try {
+    payload = await c.req.json();
+  } catch {
+    return c.json({ error: 'Invalid request' }, 400, responseHeaders);
+  }
+
+  // Turnstile first.
+  const ok = await verifyTurnstile(c, payload['cf-turnstile-response']);
+  if (!ok) {
+    return c.json({ error: 'Verification failed. Please try again.' }, 403, responseHeaders);
+  }
+
+  const message = String(payload.message || '').trim();
+  if (!message) {
+    return c.json({ error: 'Please write a message' }, 400, responseHeaders);
+  }
+  if (message.length > MAX_MESSAGE) {
+    return c.json({ error: `Message must be ${MAX_MESSAGE} characters or fewer` }, 400, responseHeaders);
+  }
+  const author = String(payload.author || '').trim().slice(0, MAX_AUTHOR) || null;
+
+  try {
+    const id = crypto.randomUUID();
+    await c.env.DB.prepare(`
+      INSERT INTO memories (id, author, message, status, created_at)
+      VALUES (?, ?, ?, 'pending', ?);
+    `).bind(id, author, message.slice(0, MAX_MESSAGE), Date.now()).run();
+
+    c.executionCtx.waitUntil(sendNotification(
+      c,
+      '✍️ New memory awaiting approval — Swarley Club',
+      `A new memory was submitted and is waiting for your approval.\n\n` +
+        `From: ${author || 'Anonymous'}\n\n` +
+        `${message}\n\n` +
+        `Review it here: ${ADMIN_URL}`
+    ));
+
+    return c.json({ ok: true }, 201, responseHeaders);
+  } catch (err) {
+    console.error('Memory submission error:', err);
+    return c.json({ error: 'Could not save your memory', details: err.message }, 500, responseHeaders);
+  }
+});
+
+// GET /api/memories — public list of APPROVED memories.
+app.get('/api/memories', async (c) => {
+  try {
+    const { results } = await c.env.DB.prepare(`
+      SELECT id, author, message, created_at
+      FROM memories
+      WHERE status = 'approved'
+      ORDER BY created_at DESC;
+    `).all();
+    return c.json(results || [], 200, responseHeaders);
+  } catch (err) {
+    console.error('List memories error:', err);
+    return c.json({ error: 'Could not list memories' }, 500, responseHeaders);
+  }
+});
+
+// GET /api/admin/memories — list pending (admin).
+app.get('/api/admin/memories', requireAdmin, async (c) => {
+  try {
+    const { results } = await c.env.DB.prepare(`
+      SELECT id, author, message, created_at
+      FROM memories
+      WHERE status = 'pending'
+      ORDER BY created_at ASC;
+    `).all();
+    return c.json(results || [], 200, responseHeaders);
+  } catch (err) {
+    console.error('Admin list memories error:', err);
+    return c.json({ error: 'Could not list memories' }, 500, responseHeaders);
+  }
+});
+
+// POST /api/admin/memories/:id — approve or reject (admin).
+app.post('/api/admin/memories/:id', requireAdmin, async (c) => {
+  const id = c.req.param('id');
+  let action;
+  try {
+    ({ action } = await c.req.json());
+  } catch {
+    return c.json({ error: 'Invalid body' }, 400, responseHeaders);
+  }
+  if (action !== 'approve' && action !== 'reject') {
+    return c.json({ error: 'action must be "approve" or "reject"' }, 400, responseHeaders);
+  }
+  try {
+    const status = action === 'approve' ? 'approved' : 'rejected';
+    const { meta } = await c.env.DB.prepare(`
+      UPDATE memories SET status = ?, reviewed_at = ? WHERE id = ?;
+    `).bind(status, Date.now(), id).run();
+    if (meta && meta.changes === 0) {
+      return c.json({ error: 'Not found' }, 404, responseHeaders);
+    }
+    return c.json({ ok: true, status }, 200, responseHeaders);
+  } catch (err) {
+    console.error('Moderate memory error:', err);
+    return c.json({ error: 'Could not update memory' }, 500, responseHeaders);
+  }
+});
+
+// DELETE /api/admin/memories/:id — fully remove (admin).
+app.delete('/api/admin/memories/:id', requireAdmin, async (c) => {
+  const id = c.req.param('id');
+  try {
+    await c.env.DB.prepare(`DELETE FROM memories WHERE id = ?;`).bind(id).run();
+    return c.json({ ok: true }, 200, responseHeaders);
+  } catch (err) {
+    console.error('Delete memory error:', err);
+    return c.json({ error: 'Could not delete memory' }, 500, responseHeaders);
   }
 });
 

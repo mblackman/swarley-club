@@ -15,7 +15,8 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "hono": "^4.7.7"
+    "hono": "^4.7.7",
+    "mimetext": "^3.0.16"
   },
   "devDependencies": {
     "wrangler": "^4.98.0"
