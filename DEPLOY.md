@@ -61,9 +61,11 @@ these yourself.
 1. Cloudflare dashboard → **Turnstile** → **Add site**.
    - Production: add domain `swarley.club`.
    - Dev: add your `*.pages.dev` preview domain (or just use the test keys below).
-2. Copy the **Site key** (public) into the two forms:
-   - `page/submit.html` → `data-sitekey="..."`
-   - `page/memories.html` → `data-sitekey="..."`
+2. Copy the **Site key** (public) into `page/config.js` → `TURNSTILE_SITEKEY`.
+   It's hostname-selected: the `swarley.club` branch gets the real prod key, the
+   `else` branch keeps the dev/test key — both committed, no per-merge swap. The
+   forms (`submit.html`, `memories.html`) render the widget from this value via
+   `submit.js`/`memories.js`, so there is **no** `data-sitekey` in the HTML.
 3. Copy the **Secret key** into the Worker (see secrets below).
 
 **Dev shortcut — Turnstile test keys (always pass, no dashboard site needed):**
@@ -109,10 +111,11 @@ npm run deploy:dev
 
 Then wire the page to the dev Worker and push so the Pages preview rebuilds:
 
-1. `page/config.js` — replace `YOUR-ACCOUNT` in the dev URL with your real
+1. `page/config.js` — confirm the dev `API_BASE` points at your real
    `*.workers.dev` host (keep the trailing `/api`).
-2. `page/submit.html` + `page/memories.html` — set `data-sitekey` to the
-   Turnstile **test** site key `1x00000000000000000000AA`.
+2. `page/config.js` — the `else` (non-`swarley.club`) branch of
+   `TURNSTILE_SITEKEY` already holds the test key `1x00000000000000000000AA`,
+   which the `*.pages.dev` preview uses automatically — no edit needed.
 3. Commit and push:
    ```bash
    git commit -am "wire dev config" && git push
@@ -142,11 +145,10 @@ npm run deploy
 ```
 
 Page side:
-1. Set the **real** Turnstile site key in `page/submit.html` and
-   `page/memories.html`.
-2. `page/config.js` needs no change — the prod branch already resolves to `/api`
-   on `swarley.club`.
-3. Merge `memorial-dev` → `main`; Cloudflare Pages builds production from `main`.
+1. Set the **real** Turnstile site key in `page/config.js` →
+   `TURNSTILE_SITEKEY` (the `swarley.club` branch). `API_BASE` needs no change —
+   the prod branch already resolves to `/api` on `swarley.club`.
+2. Merge `memorial-dev` → `main`; Cloudflare Pages builds production from `main`.
 
 > **Order matters:** deploy the Worker before the page each time you add backend
 > routes, or the forms will hit a 404.
@@ -193,7 +195,7 @@ the favorites list in `page/script.js`.
 | `ADMIN_TOKEN` | Worker secret | Bearer token for `admin.html` moderation |
 | `TURNSTILE_SECRET` | Worker secret | Turnstile secret key (dev test key OK for dev) |
 | `IP_HASH_SALT` | Worker secret | Salt for hashing counter IPs (prod already set) |
-| Turnstile **site** key | `submit.html`, `memories.html` | Public; `data-sitekey` |
+| Turnstile **site** key | `page/config.js` `TURNSTILE_SITEKEY` | Public; hostname-selected (prod vs test) |
 | Dev API base | `page/config.js` | `*.workers.dev` URL for the preview |
 | Dev D1 id | `wrangler.toml` `[[env.dev.d1_databases]]` | From `wrangler d1 create` |
 
@@ -207,9 +209,9 @@ secrets.
 - **Counter / lists show "N/A" or "couldn't load" on the preview** — `config.js`
   `API_BASE` still has the `YOUR-ACCOUNT` placeholder, or the dev Worker isn't
   deployed.
-- **Form says "Verification failed"** — Turnstile site key (in HTML) and secret
-  (Worker) don't match, or the domain isn't registered with the widget. Use the
-  test keys for dev.
+- **Form says "Verification failed"** — Turnstile site key (`config.js`
+  `TURNSTILE_SITEKEY`) and secret (Worker `TURNSTILE_SECRET`) don't match, or the
+  domain isn't registered with the widget. Use the test keys for dev.
 - **No notification email** — Email Routing not enabled, or
   mateoblackman@gmail.com not verified as a destination. Submissions still
   succeed regardless. Check Worker logs (`wrangler tail --env dev`).
