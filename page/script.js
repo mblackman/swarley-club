@@ -31,24 +31,12 @@ document.addEventListener('DOMContentLoaded', () => {
         "An aspiring interior designer, famous for spontaneous bed rearrangement."
     ];
 
-    // Curated photos baked into the site. Community uploads (from R2 via the
-    // submissions API) get merged into this pool at load time so the homepage
-    // rotation reuses every photo — the ones we add and the ones friends share.
-    const allSwarleyPics = [
-        { src: "images/swarley-1.webp", alt: "Swarley being a gentleman in a suit" },
-        { src: "images/swarley-2.webp", alt: "Swarley's side profile and smile" },
-        { src: "images/swarley-3.webp", alt: "Swarley looking ghastly and cute" },
-        { src: "images/swarley-4.webp", alt: "Swarley prancing through the grass" },
-        { src: "images/swarley-5.webp", alt: "Swarley is a nugget" },
-        { src: "images/swarley-6.webp", alt: "Swarley as a little pup in the car" },
-        { src: "images/swarley-7.webp", alt: "Swarley looking like a disheveled old man" },
-        { src: "images/swarley-8.webp", alt: "Swarley's little feet" },
-        { src: "images/swarley-9.webp", alt: "Swarley looking like a rabid beast" },
-        { src: "images/swarley-10.webp", alt: "Swarley wondering if you got snacks" },
-        { src: "images/swarley-11.webp", alt: "Swarley looking dapper in a bandana" },
-        { src: "images/swarley-12.webp", alt: "Swarley trying his hardest to smile" },
-        { src: "images/swarley-13.webp", alt: "Swarley relaxing" },
-      ];
+    // Photo pool for the homepage rotation. Filled at load time from:
+    //   • window.SWARLEY_GALLERY — optional pipeline-generated photos
+    //     (scripts/optimize-gallery.mjs), with webp/jpg siblings; and
+    //   • approved submissions from the API (owner uploads + community shares,
+    //     R2-served, no format variants — see fetchCommunityPics below).
+    const allSwarleyPics = [];
 
     // Pull in pipeline-generated photos (scripts/optimize-gallery.mjs writes
     // window.SWARLEY_GALLERY). Each has webp/jpg siblings, so the non-remote
@@ -188,8 +176,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Initial Load Actions ---
     displayRandomFact();
     fetchInitialCount();
-    loadSwarleyPics(); // curated pics immediately…
-    fetchCommunityPics().then(loadSwarleyPics); // …then re-roll once community pics arrive
+    loadSwarleyPics(); // any pipeline statics immediately…
+    fetchCommunityPics().then(loadSwarleyPics); // …then re-roll once API photos arrive
 
     // --- Button Click Handler ---
     if (joinButton) {

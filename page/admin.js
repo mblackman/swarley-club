@@ -127,7 +127,7 @@ document.addEventListener("DOMContentLoaded", () => {
       `${escapeHtml(item.caption || "(no caption)")}<br>` +
       `<small>${escapeHtml(item.filename || "")} · ${formatSize(item.size)} · ${escapeHtml(when)}</small>`;
 
-    card.append(img, meta, kindSelect(item), actionButtons((action) => moderate("submissions", item.id, action, card, photosNote, "No pending photos 🎉")));
+    card.append(img, meta, editPanel(item), actionButtons((action) => moderate("submissions", item.id, action, card, photosNote, "No pending photos 🎉")));
     photosList.appendChild(card);
   }
 
@@ -174,7 +174,7 @@ document.addEventListener("DOMContentLoaded", () => {
     del.addEventListener("click", () => deleteApproved(item.id, card));
     actions.append(del);
 
-    card.append(img, meta, kindSelect(item), actions);
+    card.append(img, meta, editPanel(item), actions);
     approvedList.appendChild(card);
   }
 
@@ -220,42 +220,88 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // --- Shared -----------------------------------------------------------
-  // Photo/artwork tag selector. Persists immediately on change.
-  function kindSelect(item) {
+  // Editable fields panel: caption/title, attribution, type (photo/artwork),
+  // and section (owner = "Our Favorite Photos", community = "From Everyone").
+  // Saves all fields in one request via POST /admin/submissions/:id/edit.
+  function editPanel(item) {
     const wrap = document.createElement("div");
-    wrap.className = "kind-row";
-    const label = document.createElement("label");
-    label.textContent = "Type ";
-    const sel = document.createElement("select");
-    [["photo", "Photo"], ["artwork", "Artwork"]].forEach(([value, text]) => {
-      const opt = document.createElement("option");
-      opt.value = value; opt.textContent = text;
-      sel.appendChild(opt);
+    wrap.className = "edit-panel";
+
+    const caption = labeledInput("Title / caption", item.caption || "", 500, "e.g. Snow day, 2019");
+    const submitter = labeledInput("Attribution / credit", item.submitter || "", 80, "e.g. Mom");
+    const kind = labeledSelect("Type", [["photo", "Photo"], ["artwork", "Artwork"]],
+      item.kind === "artwork" ? "artwork" : "photo");
+    const source = labeledSelect("Section",
+      [["owner", "Our Favorite Photos"], ["community", "From Everyone Who Loved Him"]],
+      item.source === "owner" ? "owner" : "community");
+
+    const save = document.createElement("button");
+    save.className = "submit-btn";
+    save.textContent = "Save changes";
+    const note = document.createElement("span");
+    note.className = "form-status";
+
+    save.addEventListener("click", async () => {
+      const payload = {
+        caption: caption.input.value,
+        submitter: submitter.input.value,
+        kind: kind.select.value,
+        source: source.select.value,
+      };
+      save.disabled = true;
+      note.textContent = "Saving…"; note.className = "form-status";
+      try {
+        const res = await fetch(`${apiBase}/admin/submissions/${item.id}/edit`, {
+          method: "POST",
+          headers: { ...authHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          let msg = `HTTP ${res.status}`;
+          try { const e = await res.json(); if (e.error) msg = e.error; } catch {}
+          throw new Error(msg);
+        }
+        Object.assign(item, payload); // keep local card state in sync
+        note.textContent = "Saved."; note.className = "form-status ok";
+      } catch (err) {
+        note.textContent = `Save failed: ${err.message}`; note.className = "form-status err";
+      } finally {
+        save.disabled = false;
+      }
     });
-    sel.value = item.kind === "artwork" ? "artwork" : "photo";
-    sel.addEventListener("change", () => setKind(item.id, sel.value, sel));
-    label.appendChild(sel);
-    wrap.appendChild(label);
+
+    wrap.append(caption.field, submitter.field, kind.field, source.field, save, note);
     return wrap;
   }
 
-  async function setKind(id, kind, sel) {
-    const prev = sel.dataset.prev || (kind === "artwork" ? "photo" : "artwork");
-    sel.disabled = true;
-    try {
-      const res = await fetch(`${apiBase}/admin/submissions/${id}/kind`, {
-        method: "POST",
-        headers: { ...authHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ kind }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      sel.dataset.prev = kind;
-    } catch (err) {
-      sel.value = prev; // revert on failure
-      setStatus(`Could not change type: ${err.message}`, "err");
-    } finally {
-      sel.disabled = false;
-    }
+  function labeledInput(labelText, value, maxlen, placeholder) {
+    const field = document.createElement("div");
+    field.className = "form-field";
+    const label = document.createElement("label");
+    label.textContent = labelText;
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = value;
+    input.maxLength = maxlen;
+    if (placeholder) input.placeholder = placeholder;
+    field.append(label, input);
+    return { field, input };
+  }
+
+  function labeledSelect(labelText, options, selected) {
+    const field = document.createElement("div");
+    field.className = "form-field";
+    const label = document.createElement("label");
+    label.textContent = labelText;
+    const select = document.createElement("select");
+    options.forEach(([value, text]) => {
+      const opt = document.createElement("option");
+      opt.value = value; opt.textContent = text;
+      select.appendChild(opt);
+    });
+    select.value = selected;
+    field.append(label, select);
+    return { field, select };
   }
 
   function actionButtons(onAction) {

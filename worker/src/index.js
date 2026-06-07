@@ -30,6 +30,7 @@ const responseHeaders = {
 // --- Submission config (keep in sync with page/submit.js) -------------------
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 const ALLOWED_KIND = new Set(['photo', 'artwork']); // image category, set by admin
+const ALLOWED_SOURCE = new Set(['owner', 'community']); // gallery section, set by admin
 const EXT_BY_MIME = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
@@ -286,7 +287,7 @@ app.post('/api/submissions', async (c) => {
 app.get('/api/submissions', async (c) => {
   try {
     const { results } = await c.env.DB.prepare(`
-      SELECT id, submitter, caption, kind, created_at
+      SELECT id, submitter, caption, kind, source, created_at
       FROM submissions
       WHERE status = 'approved'
       ORDER BY created_at DESC;
@@ -296,6 +297,7 @@ app.get('/api/submissions', async (c) => {
       submitter: r.submitter,
       caption: r.caption,
       kind: r.kind,
+      source: r.source,
       created_at: r.created_at,
       imageUrl: `/api/submissions/${r.id}/image`,
     }));
@@ -421,8 +423,8 @@ app.post('/api/admin/submissions/upload', requireAdmin, async (c) => {
 
     await c.env.DB.prepare(`
       INSERT INTO submissions
-        (id, r2_key, filename, submitter, caption, kind, mime, size, status, created_at, reviewed_at, ip_hash)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, NULL);
+        (id, r2_key, filename, submitter, caption, kind, mime, size, status, created_at, reviewed_at, ip_hash, source)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, NULL, 'owner');
     `).bind(id, key, filename, submitter, caption, kind, file.type, file.size, now, now).run();
 
     return c.json({ ok: true, id }, 201, responseHeaders);
@@ -509,6 +511,59 @@ app.post('/api/admin/submissions/:id/kind', requireAdmin, async (c) => {
     return c.json({ ok: true, kind }, 200, responseHeaders);
   } catch (err) {
     console.error('Set kind error:', err);
+    return c.json({ error: 'Could not update image' }, 500, responseHeaders);
+  }
+});
+
+// POST /api/admin/submissions/:id/edit — update editable fields. Body may carry
+// any of: caption, submitter (attribution), kind, source. Only provided keys are
+// changed; empty caption/submitter strings clear the field (stored as NULL).
+app.post('/api/admin/submissions/:id/edit', requireAdmin, async (c) => {
+  const id = c.req.param('id');
+  let body;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Invalid body' }, 400, responseHeaders);
+  }
+
+  const sets = [];
+  const vals = [];
+  if ('caption' in body) {
+    const v = String(body.caption ?? '').slice(0, 500).trim();
+    sets.push('caption = ?'); vals.push(v || null);
+  }
+  if ('submitter' in body) {
+    const v = String(body.submitter ?? '').slice(0, 80).trim();
+    sets.push('submitter = ?'); vals.push(v || null);
+  }
+  if ('kind' in body) {
+    if (!ALLOWED_KIND.has(body.kind)) {
+      return c.json({ error: 'kind must be "photo" or "artwork"' }, 400, responseHeaders);
+    }
+    sets.push('kind = ?'); vals.push(body.kind);
+  }
+  if ('source' in body) {
+    if (!ALLOWED_SOURCE.has(body.source)) {
+      return c.json({ error: 'source must be "owner" or "community"' }, 400, responseHeaders);
+    }
+    sets.push('source = ?'); vals.push(body.source);
+  }
+  if (sets.length === 0) {
+    return c.json({ error: 'No editable fields provided' }, 400, responseHeaders);
+  }
+
+  try {
+    vals.push(id);
+    const { meta } = await c.env.DB.prepare(
+      `UPDATE submissions SET ${sets.join(', ')} WHERE id = ?;`
+    ).bind(...vals).run();
+    if (meta && meta.changes === 0) {
+      return c.json({ error: 'Not found' }, 404, responseHeaders);
+    }
+    return c.json({ ok: true }, 200, responseHeaders);
+  } catch (err) {
+    console.error('Edit submission error:', err);
     return c.json({ error: 'Could not update image' }, 500, responseHeaders);
   }
 });

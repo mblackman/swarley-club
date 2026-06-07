@@ -1,46 +1,33 @@
 // =====================================================================
 // Swarley gallery
 //
-// CURATED PHOTOS: edit the GALLERY list below.
+// Three sections, all populated at load time:
+//   • "Our Favorite Photos"      — owner uploads (source=owner, kind=photo),
+//                                   served full-res from R2 via the API, plus
+//                                   any pipeline-generated photos in
+//                                   window.SWARLEY_GALLERY (scripts/optimize-gallery.mjs).
+//   • "From Everyone Who Loved Him" — public submissions (source=community, kind=photo).
+//   • "Artwork"                  — every image tagged kind=artwork (owner + community).
 //
-// Easiest way to add the big collection from Google Photos:
-//   1. Drop full-res originals into  scripts/source-photos/
-//   2. From scripts/:  npm run gallery
-//      → writes optimized AVIF/WebP/JPEG (full + thumbnail) into
-//        page/images/gallery/ and prints ready-to-paste manifest entries.
-//   3. Paste those entries here and fill in the alt/caption text.
+// Owner vs community is set server-side: admin.html uploads land as
+// source=owner; the public submit form lands as source=community. Tag
+// photo/artwork from admin.html.
 //
-// Manual entries also work: { base, ext='jpg', webp?, avif?, thumb?, w?, h?, alt, caption }
+// Pipeline manifest fields: { base, ext='jpg', webp?, avif?, thumb?, w?, h?, alt, caption }
 // where `base` is the path WITHOUT extension. `thumb:true` means a small
 // `<base>-thumb.<ext>` exists for the grid; the lightbox always uses full size.
-//
-// Seeded with the original site photos so the gallery is never empty.
 // =====================================================================
-const GALLERY = [
-  { base: "images/swarley-1",  ext: "jpg", webp: true, alt: "Swarley being a gentleman in a suit", caption: "" },
-  { base: "images/swarley-2",  ext: "jpg", webp: true, alt: "Swarley's side profile and smile", caption: "" },
-  { base: "images/swarley-3",  ext: "jpg", webp: true, alt: "Swarley looking ghastly and cute", caption: "" },
-  { base: "images/swarley-4",  ext: "jpg", webp: true, alt: "Swarley prancing through the grass", caption: "" },
-  { base: "images/swarley-5",  ext: "jpg", webp: true, alt: "Swarley is a nugget", caption: "" },
-  { base: "images/swarley-6",  ext: "jpg", webp: true, alt: "Swarley as a little pup in the car", caption: "" },
-  { base: "images/swarley-7",  ext: "jpg", webp: true, alt: "Swarley looking like a disheveled old man", caption: "" },
-  { base: "images/swarley-8",  ext: "jpg", webp: true, alt: "Swarley's little feet", caption: "" },
-  { base: "images/swarley-9",  ext: "jpg", webp: true, alt: "Swarley looking like a rabid beast", caption: "" },
-  { base: "images/swarley-10", ext: "jpg", webp: true, alt: "Swarley wondering if you got snacks", caption: "" },
-  { base: "images/swarley-11", ext: "jpg", webp: true, alt: "Swarley looking dapper in a bandana", caption: "" },
-  { base: "images/swarley-12", ext: "jpg", webp: true, alt: "Swarley trying his hardest to smile", caption: "" },
-  { base: "images/swarley-13", ext: "jpg", webp: true, alt: "Swarley relaxing", caption: "" },
-];
 
 const apiBase = (window.SWARLEY && window.SWARLEY.API_BASE) || "/api";
 
-// A single ordered list backing the lightbox (curated first, then community).
+// A single ordered list backing the lightbox. Built in display order:
+// favorites (pipeline statics, then owner uploads), community, then artwork.
 const lightboxItems = [];
 
 document.addEventListener("DOMContentLoaded", () => {
-  renderCurated();
+  renderPipelinePhotos();
   setupLightbox();
-  loadCommunity();
+  loadSubmissions();
 });
 
 function makeSource(srcset, type) {
@@ -50,25 +37,34 @@ function makeSource(srcset, type) {
   return s;
 }
 
-// --- Curated grid -----------------------------------------------------
-// Manifest fields: { base, ext='jpg', webp?, avif?, thumb?, w?, h?, alt, caption }.
-// The grid uses the small `-thumb` variant when `thumb` is set; the lightbox
-// always opens the full-size image. avif/webp sources are added when present.
-function renderCurated() {
+// Append a figure to `grid`, register it as a lightbox item, and wire the click.
+function appendFigure(grid, { picture, lightbox, caption }) {
+  const figure = document.createElement("figure");
+  figure.appendChild(picture);
+  if (caption) {
+    const cap = document.createElement("figcaption");
+    cap.textContent = caption;
+    figure.appendChild(cap);
+  }
+  const idx = lightboxItems.push(lightbox) - 1;
+  figure.addEventListener("click", () => openLightbox(idx));
+  grid.appendChild(figure);
+}
+
+// --- Pipeline-generated favorites (static AVIF/WebP/JPEG) -------------
+// Optional owner-curated photos written into window.SWARLEY_GALLERY by
+// scripts/optimize-gallery.mjs. The grid uses the small `-thumb` variant when
+// `thumb` is set; the lightbox always opens the full-size image.
+function renderPipelinePhotos() {
   const grid = document.getElementById("curatedGallery");
-  if (!grid) return;
-  // Hand-listed photos first, then anything the image pipeline auto-generated
-  // into window.SWARLEY_GALLERY (see scripts/optimize-gallery.mjs).
-  const items = GALLERY.concat(window.SWARLEY_GALLERY || []);
+  const items = window.SWARLEY_GALLERY || [];
+  if (!grid || items.length === 0) return;
+  hideEmpty("curatedEmpty");
   items.forEach((item) => {
     const ext = item.ext || "jpg";
     const full = `${item.base}.${ext}`;            // lightbox source
     const gridStem = item.thumb ? `${item.base}-thumb` : item.base;
-    const idx = lightboxItems.push({
-      src: full, alt: item.alt, caption: item.caption, w: item.w, h: item.h,
-    }) - 1;
 
-    const figure = document.createElement("figure");
     const picture = document.createElement("picture");
     if (item.avif) picture.appendChild(makeSource(`${gridStem}.avif`, "image/avif"));
     if (item.webp) picture.appendChild(makeSource(`${gridStem}.webp`, "image/webp"));
@@ -78,59 +74,95 @@ function renderCurated() {
     img.loading = "lazy";
     img.decoding = "async";
     picture.appendChild(img);
-    figure.appendChild(picture);
 
-    if (item.caption) {
-      const cap = document.createElement("figcaption");
-      cap.textContent = item.caption;
-      figure.appendChild(cap);
-    }
-    figure.addEventListener("click", () => openLightbox(idx));
-    grid.appendChild(figure);
+    appendFigure(grid, {
+      picture,
+      caption: item.caption,
+      lightbox: { src: full, alt: item.alt, caption: item.caption, w: item.w, h: item.h },
+    });
   });
 }
 
-// --- Community (approved submissions) ---------------------------------
-async function loadCommunity() {
-  const grid = document.getElementById("communityGallery");
-  const empty = document.getElementById("communityEmpty");
-  if (!grid) return;
+// --- Approved submissions (R2-backed, full resolution) ----------------
+// Splits the single /api/submissions feed into the three on-page sections.
+async function loadSubmissions() {
+  const buckets = {
+    favorites: document.getElementById("curatedGallery"),
+    community: document.getElementById("communityGallery"),
+    artwork: document.getElementById("artworkGallery"),
+  };
+  const origin = apiBase.replace(/\/api$/, "");
+  let items = [];
   try {
     const res = await fetch(`${apiBase}/submissions`, { method: "GET" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const items = await res.json();
-    if (!Array.isArray(items) || items.length === 0) {
-      if (empty) empty.textContent = "No shared photos yet — be the first to add one of the best boy.";
-      return;
-    }
-    if (empty) empty.style.display = "none";
-    items.forEach((sub) => {
-      const src = sub.imageUrl.startsWith("http") ? sub.imageUrl : `${apiBase.replace(/\/api$/, "")}${sub.imageUrl}`;
-      const altParts = [];
-      if (sub.caption) altParts.push(sub.caption);
-      if (sub.submitter) altParts.push(`shared by ${sub.submitter}`);
-      const alt = altParts.length ? `Swarley — ${altParts.join(", ")}` : "Swarley, shared by a friend";
-      const caption = [sub.caption, sub.submitter ? `— ${sub.submitter}` : ""].filter(Boolean).join(" ");
-      const idx = lightboxItems.push({ src, alt, caption }) - 1;
-
-      const figure = document.createElement("figure");
-      const img = document.createElement("img");
-      img.src = src;
-      img.alt = alt;
-      img.loading = "lazy";
-      figure.appendChild(img);
-      if (caption) {
-        const cap = document.createElement("figcaption");
-        cap.textContent = caption;
-        figure.appendChild(cap);
-      }
-      figure.addEventListener("click", () => openLightbox(idx));
-      grid.appendChild(figure);
-    });
+    items = await res.json();
+    if (!Array.isArray(items)) items = [];
   } catch (err) {
-    console.error("Failed to load community submissions:", err);
-    if (empty) empty.textContent = "Couldn't load shared photos right now.";
+    console.error("Failed to load submissions:", err);
+    setEmpty("curatedEmpty", "Couldn't load photos right now.", true);
+    setEmpty("communityEmpty", "Couldn't load shared photos right now.", true);
+    setEmpty("artworkEmpty", "Couldn't load artwork right now.", true);
+    return;
   }
+
+  // API returns newest-first; reverse so the favorites grid reads oldest→newest
+  // alongside any pipeline statics already rendered. (Community/artwork inherit
+  // the same order — fine for a memorial gallery.)
+  const photos = items.slice().reverse();
+
+  // Render order = lightbox order: owner photos (continue favorites), then
+  // community photos, then all artwork.
+  const owner = photos.filter((s) => s.kind !== "artwork" && s.source === "owner");
+  const community = photos.filter((s) => s.kind !== "artwork" && s.source !== "owner");
+  const artwork = photos.filter((s) => s.kind === "artwork");
+
+  owner.forEach((s) => renderSubmission(buckets.favorites, s, origin));
+  community.forEach((s) => renderSubmission(buckets.community, s, origin));
+  artwork.forEach((s) => renderSubmission(buckets.artwork, s, origin));
+
+  // Empty-state messages per section.
+  finishSection("curatedEmpty", buckets.favorites,
+    "No favorite photos yet — add some from the admin page.");
+  finishSection("communityEmpty", buckets.community,
+    "No shared photos yet — be the first to add one of the best boy.");
+  finishSection("artworkEmpty", buckets.artwork,
+    "No artwork yet.");
+}
+
+function renderSubmission(grid, sub, origin) {
+  if (!grid) return;
+  const src = sub.imageUrl.startsWith("http") ? sub.imageUrl : `${origin}${sub.imageUrl}`;
+  const altParts = [];
+  if (sub.caption) altParts.push(sub.caption);
+  if (sub.submitter) altParts.push(`shared by ${sub.submitter}`);
+  const alt = altParts.length ? `Swarley — ${altParts.join(", ")}` : "Swarley, shared by a friend";
+  const caption = [sub.caption, sub.submitter ? `— ${sub.submitter}` : ""].filter(Boolean).join(" ");
+
+  const picture = document.createElement("picture");
+  const img = document.createElement("img");
+  img.src = src;
+  img.alt = alt;
+  img.loading = "lazy";
+  picture.appendChild(img);
+
+  appendFigure(grid, { picture, caption, lightbox: { src, alt, caption } });
+}
+
+function hideEmpty(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = "none";
+}
+function setEmpty(id, text, show) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = text;
+  el.style.display = show ? "" : "none";
+}
+// Hide the loading note if the grid has items; otherwise show the empty message.
+function finishSection(emptyId, grid, emptyMsg) {
+  if (grid && grid.querySelector("figure")) hideEmpty(emptyId);
+  else setEmpty(emptyId, emptyMsg, true);
 }
 
 // --- Lightbox ---------------------------------------------------------
