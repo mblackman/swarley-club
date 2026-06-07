@@ -1,5 +1,8 @@
 .wrangler
 worker/node_modules
 **/.dev.vars
+# Local Cloudflare API token — NEVER commit. Read by the agent, then deleted.
+.cf-token
+.secrets/
 # Local agent/LLM scratchpad — agent-facing docs, notes, indexes (not part of the project)
 .agent/

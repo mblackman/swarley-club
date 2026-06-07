@@ -12,4 +12,4 @@ window.SWARLEY = window.SWARLEY || {};
 window.SWARLEY.API_BASE =
   location.hostname === "swarley.club"
     ? "/api"
-    : "https://swarley-club-dev.YOUR-ACCOUNT.workers.dev/api";
+    : "https://swarley-club-dev.mateoblackman.workers.dev/api";

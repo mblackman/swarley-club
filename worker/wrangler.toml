@@ -36,6 +36,9 @@ destination_address = "mateoblackman@gmail.com"
 # pointing at SEPARATE dev resources.
 # ---------------------------------------------------------------------------
 [env.dev]
+# Override the inherited production route: dev serves ONLY from *.workers.dev.
+workers_dev = true
+routes = []
 
 [env.dev.observability.logs]
 enabled = true
@@ -43,8 +46,7 @@ enabled = true
 [[env.dev.d1_databases]]
 binding = "DB"
 database_name = "swarley-club-dev"
-# TODO(dev): paste the id printed by `wrangler d1 create swarley-club-dev`.
-database_id = "PLACEHOLDER_DEV_D1_ID"
+database_id = "3ff53d92-afdf-4868-ac57-58479b3c43b7"
 
 [[env.dev.r2_buckets]]
 binding = "SUBMISSIONS_BUCKET"
