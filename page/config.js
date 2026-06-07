@@ -22,5 +22,5 @@ window.SWARLEY.API_BASE =
 // before merging to main, or spam protection is effectively off in production.
 window.SWARLEY.TURNSTILE_SITEKEY =
   location.hostname === "swarley.club"
-    ? "REAL_PROD_SITEKEY"
+    ? "0x4AAAAAADgVzVCo2TAFaibr"
     : "1x00000000000000000000AA";
