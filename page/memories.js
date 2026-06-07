@@ -4,6 +4,15 @@
 const apiBase = (window.SWARLEY && window.SWARLEY.API_BASE) || "/api";
 const MAX_MESSAGE = 2000; // keep in sync with the Worker
 
+// Turnstile loads with render=explicit&onload=onTurnstileLoad (see memories.html),
+// so we render it ourselves using the hostname-selected site key from config.js.
+window.onTurnstileLoad = () => {
+  if (!window.turnstile) return;
+  window.turnstile.render(".cf-turnstile", {
+    sitekey: (window.SWARLEY && window.SWARLEY.TURNSTILE_SITEKEY) || "1x00000000000000000000AA",
+  });
+};
+
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("memoryForm");
   const statusEl = document.getElementById("status");

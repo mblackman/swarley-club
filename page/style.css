@@ -321,7 +321,7 @@ footer {
 }
 .favorites-list li:last-child { border-bottom: none; }
 .favorites-list li::before {
-    content: "🐾";
+    content: "";
     position: absolute;
     left: 0;
     top: 10px;

@@ -16,10 +16,15 @@ app.use('/api/*', cors({
   allowHeaders: ['Content-Type', 'Authorization'],
 }));
 
+// CORS is added by the cors() middleware above for every /api/* response, so we
+// don't repeat Access-Control-Allow-Origin here (the image route below keeps its
+// own copy because that Response is stored in the edge cache as-is).
 const responseHeaders = {
   'Content-Type': 'application/json',
-  'Access-Control-Allow-Origin': '*',
   'Cache-Control': 'no-cache, no-store, must-revalidate',
+  // Worker responses don't pass through page/_headers (that's Pages-only), so
+  // set anti-sniffing here too. The image routes below repeat it on their own.
+  'X-Content-Type-Options': 'nosniff',
 };
 
 // --- Submission config (keep in sync with page/submit.js) -------------------
@@ -37,6 +42,7 @@ const STORAGE_BUDGET_DEFAULT = 5 * 1024 * 1024 * 1024; // 5 GiB (override via ST
 const MAX_PENDING_SUBMISSIONS = 300;   // cap the photo moderation backlog
 const MAX_PENDING_MEMORIES = 500;      // cap the guestbook moderation backlog
 const MAX_UPLOADS_PER_IP_DAY = 25;     // per uploader, rolling 24h
+const MAX_MEMORIES_PER_IP_DAY = 30;    // per author, rolling 24h
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // sha256(ip + salt) — same privacy-preserving scheme as the counter.
@@ -79,17 +85,10 @@ async function sendNotification(c, subject, text) {
 // Counter (unchanged)
 // ===========================================================================
 async function getCount(c) {
-  const { results } = await c.env.DB.prepare(`
+  const row = await c.env.DB.prepare(`
     SELECT COUNT(*) AS unique_count FROM unique_visits;
-  `).run();
-  return results ? results[0].unique_count : 0;
-}
-
-async function checkExistingId(c, id) {
-  const { results } = await c.env.DB.prepare(`
-    SELECT id FROM unique_visits WHERE id = ?;
-  `).bind(id).all();
-  return results.length > 0;
+  `).first();
+  return row ? row.unique_count : 0;
 }
 
 app.get("/api/counter", async (c) => {
@@ -114,30 +113,19 @@ app.post("/api/counter", async (c) => {
     hash.update(clientIP);
     hash.update(salt);
     const id = hash.digest('hex');
-    const exists = await checkExistingId(c, id);
 
-    if (exists) {
-      const count = await getCount(c);
-      return c.json({ count: count }, 200, responseHeaders);
-    }
-
-    const timestamp = Date.now();
-    const {success} = await c.env.DB.prepare(
-      `
-      INSERT OR IGNORE INTO unique_visits (id, timestamp) VALUES (?, ?);
-      `
-    ).bind(id, timestamp)
-    .run();
+    // INSERT OR IGNORE dedupes on the UNIQUE id, so a repeat visitor is a no-op
+    // — no need for a separate existence check.
+    await c.env.DB.prepare(
+      `INSERT OR IGNORE INTO unique_visits (id, timestamp) VALUES (?, ?);`
+    ).bind(id, Date.now()).run();
 
     const count = await getCount(c);
-    if (success) {
-      return c.json({ count: count }, 200, responseHeaders);
-    }
-    return c.json({ error: 'Failed to update count' }, 500, responseHeaders);
+    return c.json({ count: count }, 200, responseHeaders);
   } catch (error) {
     console.error('D1 Operation Error:', error);
     return c.json(
-      { error: 'Could not access or update count', details: error.message },
+      { error: 'Could not access or update count' },
       500,
       responseHeaders
     );
@@ -172,11 +160,28 @@ async function verifyTurnstile(c, token) {
   }
 }
 
-// Bearer-token admin guard.
-async function requireAdmin(c, next) {
+// Constant-time string compare so the admin token can't be recovered byte-by-
+// byte via response timing. (Length is compared first — the token length is
+// fixed and not secret.)
+function safeEqual(a, b) {
+  a = String(a);
+  b = String(b);
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+// True iff the request carries a valid admin bearer token.
+function isAdmin(c) {
   const auth = c.req.header('Authorization') || '';
   const token = auth.replace(/^Bearer\s+/i, '');
-  if (!c.env.ADMIN_TOKEN || token !== c.env.ADMIN_TOKEN) {
+  return Boolean(c.env.ADMIN_TOKEN) && safeEqual(token, c.env.ADMIN_TOKEN);
+}
+
+// Bearer-token admin guard.
+async function requireAdmin(c, next) {
+  if (!isAdmin(c)) {
     return c.json({ error: 'Unauthorized' }, 401, responseHeaders);
   }
   await next();
@@ -272,7 +277,7 @@ app.post('/api/submissions', async (c) => {
     return c.json({ ok: true }, 201, responseHeaders);
   } catch (err) {
     console.error('Submission error:', err);
-    return c.json({ error: 'Could not save submission', details: err.message }, 500, responseHeaders);
+    return c.json({ error: 'Could not save submission' }, 500, responseHeaders);
   }
 });
 
@@ -299,39 +304,63 @@ app.get('/api/submissions', async (c) => {
   }
 });
 
+// Stable edge-cache key for an approved image (origin + path, ignoring query
+// and auth). Used to serve repeat views from the colo cache and to purge on
+// reject/delete.
+function imageCacheUrl(c, id) {
+  return `${new URL(c.req.url).origin}/api/submissions/${id}/image`;
+}
+
 // GET /api/submissions/:id/image — stream from R2.
-// Approved images are public + cacheable. Pending/rejected require an admin
-// bearer token (used by the moderation UI); otherwise 404 (no enumeration).
+// Approved images are public + cacheable (served from the edge cache on repeat
+// views, skipping D1 + R2). Pending/rejected require an admin bearer token (used
+// by the moderation UI) and are never cached; otherwise 404 (no enumeration).
 app.get('/api/submissions/:id/image', async (c) => {
   const id = c.req.param('id');
+  const cache = caches.default;
+  const cacheKey = imageCacheUrl(c, id);
   try {
+    // Only approved images are ever stored, so a cache hit is always public.
+    const cached = await cache.match(cacheKey);
+    if (cached) return cached;
+
     const row = await c.env.DB.prepare(`
       SELECT r2_key, mime, status FROM submissions WHERE id = ?;
     `).bind(id).first();
     if (!row) return c.json({ error: 'Not found' }, 404, responseHeaders);
 
-    let cacheControl;
     if (row.status === 'approved') {
-      cacheControl = 'public, max-age=31536000, immutable';
-    } else {
-      // Non-public image: only an authenticated admin may view it.
-      const auth = c.req.header('Authorization') || '';
-      const token = auth.replace(/^Bearer\s+/i, '');
-      if (!c.env.ADMIN_TOKEN || token !== c.env.ADMIN_TOKEN) {
-        return c.json({ error: 'Not found' }, 404, responseHeaders);
-      }
-      cacheControl = 'no-store';
+      const obj = await c.env.SUBMISSIONS_BUCKET.get(row.r2_key);
+      if (!obj) return c.json({ error: 'Not found' }, 404, responseHeaders);
+      const resp = new Response(obj.body, {
+        status: 200,
+        headers: {
+          'Content-Type': row.mime,
+          // 1 day: long enough to absorb the vast majority of repeat views at
+          // the edge, short enough that an admin reject/delete clears globally
+          // within a day even where the best-effort purge below doesn't reach.
+          'Cache-Control': 'public, max-age=86400',
+          'Access-Control-Allow-Origin': '*',
+          'X-Content-Type-Options': 'nosniff',
+        },
+      });
+      c.executionCtx.waitUntil(cache.put(cacheKey, resp.clone()));
+      return resp;
     }
 
+    // Non-public image: only an authenticated admin may view it. Never cached.
+    if (!isAdmin(c)) {
+      return c.json({ error: 'Not found' }, 404, responseHeaders);
+    }
     const obj = await c.env.SUBMISSIONS_BUCKET.get(row.r2_key);
     if (!obj) return c.json({ error: 'Not found' }, 404, responseHeaders);
-
     return new Response(obj.body, {
       status: 200,
       headers: {
         'Content-Type': row.mime,
-        'Cache-Control': cacheControl,
+        'Cache-Control': 'no-store',
         'Access-Control-Allow-Origin': '*',
+        'X-Content-Type-Options': 'nosniff',
       },
     });
   } catch (err) {
@@ -396,7 +425,7 @@ app.post('/api/admin/submissions/upload', requireAdmin, async (c) => {
     return c.json({ ok: true, id }, 201, responseHeaders);
   } catch (err) {
     console.error('Admin upload error:', err);
-    return c.json({ error: 'Could not save photo', details: err.message }, 500, responseHeaders);
+    return c.json({ error: 'Could not save photo' }, 500, responseHeaders);
   }
 });
 
@@ -440,10 +469,12 @@ app.post('/api/admin/submissions/:id', requireAdmin, async (c) => {
       UPDATE submissions SET status = ?, reviewed_at = ? WHERE id = ?;
     `).bind(status, Date.now(), id).run();
 
-    // Free the storage for rejected images.
+    // Free the storage for rejected images, and drop any edge-cached copy
+    // (best-effort: caches.default.delete only purges the current colo).
     if (action === 'reject') {
       try { await c.env.SUBMISSIONS_BUCKET.delete(row.r2_key); }
       catch (e) { console.error('R2 delete failed:', e); }
+      c.executionCtx.waitUntil(caches.default.delete(imageCacheUrl(c, id)));
     }
 
     return c.json({ ok: true, status }, 200, responseHeaders);
@@ -465,6 +496,8 @@ app.delete('/api/admin/submissions/:id', requireAdmin, async (c) => {
     try { await c.env.SUBMISSIONS_BUCKET.delete(row.r2_key); }
     catch (e) { console.error('R2 delete failed:', e); }
     await c.env.DB.prepare(`DELETE FROM submissions WHERE id = ?;`).bind(id).run();
+    // Drop any edge-cached copy (best-effort: current colo only).
+    c.executionCtx.waitUntil(caches.default.delete(imageCacheUrl(c, id)));
 
     return c.json({ ok: true }, 200, responseHeaders);
   } catch (err) {
@@ -500,14 +533,25 @@ app.post('/api/memories', async (c) => {
     return c.json({ error: `Message must be ${MAX_MESSAGE} characters or fewer` }, 400, responseHeaders);
   }
   const author = String(payload.author || '').trim().slice(0, MAX_AUTHOR) || null;
+  const ipHash = hashIp(c);
 
-  // Cap the moderation backlog (best-effort — never blocks on a guard error).
+  // Cap the moderation backlog and per-author flood (best-effort — never blocks
+  // on a guard error).
   try {
     const pending = await c.env.DB.prepare(
       `SELECT COUNT(*) AS n FROM memories WHERE status = 'pending';`
     ).first();
     if (pending && pending.n >= MAX_PENDING_MEMORIES) {
       return c.json({ error: 'There are lots of memories waiting to be reviewed right now. Please try again later. 💛' }, 429, responseHeaders);
+    }
+
+    if (ipHash) {
+      const recent = await c.env.DB.prepare(
+        `SELECT COUNT(*) AS n FROM memories WHERE ip_hash = ? AND created_at > ?;`
+      ).bind(ipHash, Date.now() - DAY_MS).first();
+      if (recent && recent.n >= MAX_MEMORIES_PER_IP_DAY) {
+        return c.json({ error: "Thank you for sharing so many! You've reached today's limit — please come back tomorrow." }, 429, responseHeaders);
+      }
     }
   } catch (err) {
     console.error('Memory guard error:', err);
@@ -516,9 +560,9 @@ app.post('/api/memories', async (c) => {
   try {
     const id = crypto.randomUUID();
     await c.env.DB.prepare(`
-      INSERT INTO memories (id, author, message, status, created_at)
-      VALUES (?, ?, ?, 'pending', ?);
-    `).bind(id, author, message.slice(0, MAX_MESSAGE), Date.now()).run();
+      INSERT INTO memories (id, author, message, status, created_at, ip_hash)
+      VALUES (?, ?, ?, 'pending', ?, ?);
+    `).bind(id, author, message.slice(0, MAX_MESSAGE), Date.now(), ipHash).run();
 
     c.executionCtx.waitUntil(sendNotification(
       c,
@@ -532,7 +576,7 @@ app.post('/api/memories', async (c) => {
     return c.json({ ok: true }, 201, responseHeaders);
   } catch (err) {
     console.error('Memory submission error:', err);
-    return c.json({ error: 'Could not save your memory', details: err.message }, 500, responseHeaders);
+    return c.json({ error: 'Could not save your memory' }, 500, responseHeaders);
   }
 });
 

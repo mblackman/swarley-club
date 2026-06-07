@@ -4,6 +4,15 @@
 
 const apiBase = (window.SWARLEY && window.SWARLEY.API_BASE) || "/api";
 
+// Turnstile loads with render=explicit&onload=onTurnstileLoad (see submit.html),
+// so we render it ourselves using the hostname-selected site key from config.js.
+window.onTurnstileLoad = () => {
+  if (!window.turnstile) return;
+  window.turnstile.render(".cf-turnstile", {
+    sitekey: (window.SWARLEY && window.SWARLEY.TURNSTILE_SITEKEY) || "1x00000000000000000000AA",
+  });
+};
+
 // Keep these in sync with the Worker's validation.
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const MAX_SIZE = 8 * 1024 * 1024; // 8 MB

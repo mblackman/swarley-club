@@ -13,3 +13,14 @@ window.SWARLEY.API_BASE =
   location.hostname === "swarley.club"
     ? "/api"
     : "https://swarley-club-dev.mateoblackman.workers.dev/api";
+
+// Turnstile site key (public), chosen by hostname like API_BASE so the same
+// committed files are correct in both environments — no per-merge swap.
+//   - Production (swarley.club): the REAL site key from the Turnstile dashboard.
+//   - Dev preview / localhost: the always-pass TEST key.
+// TODO(prod): replace REAL_PROD_SITEKEY below with the real Turnstile site key
+// before merging to main, or spam protection is effectively off in production.
+window.SWARLEY.TURNSTILE_SITEKEY =
+  location.hostname === "swarley.club"
+    ? "REAL_PROD_SITEKEY"
+    : "1x00000000000000000000AA";

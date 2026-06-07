@@ -2,7 +2,7 @@
 name = "swarley-club"
 main ="src/index.js"
 compatibility_flags = [ "nodejs_compat" ]
-compatibility_date = "2024-09-23"
+compatibility_date = "2025-09-23"
 
 routes = [
   { pattern = "swarley.club/api/*", zone_name = "swarley.club" }

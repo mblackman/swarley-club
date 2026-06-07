@@ -35,7 +35,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // submissions API) get merged into this pool at load time so the homepage
     // rotation reuses every photo — the ones we add and the ones friends share.
     const allSwarleyPics = [
-        // IMPORTANT: User needs to replace these with REAL paths/URLs and descriptive alt text
         { src: "images/swarley-1.webp", alt: "Swarley being a gentleman in a suit" },
         { src: "images/swarley-2.webp", alt: "Swarley's side profile and smile" },
         { src: "images/swarley-3.webp", alt: "Swarley looking ghastly and cute" },
@@ -174,7 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(counterApiUrl, { method: 'POST' });
             if (!response.ok) {
                  let errorMsg = `HTTP error! status: ${response.status}`;
-                try { const errorData = await response.json(); errorMsg += `, Message: ${errorData.error || 'Unknown KV Error'}`; } catch (e) {/*Ignore*/}
+                try { const errorData = await response.json(); errorMsg += `, Message: ${errorData.error || 'Unknown error'}`; } catch (e) {/*Ignore*/}
                 throw new Error(errorMsg);
             }
             const data = await response.json();
