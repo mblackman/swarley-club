@@ -1,4 +1,4 @@
-CREATE TABLE unique_visits (
+CREATE TABLE IF NOT EXISTS unique_visits (
     id TEXT UNIQUE NOT NULL,
     timestamp INTEGER NOT NULL
 );
