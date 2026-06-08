@@ -123,9 +123,9 @@ async function loadSubmissions() {
 
   // Empty-state messages per section.
   finishSection("curatedEmpty", buckets.favorites,
-    "No favorite photos yet — add some from the admin page.");
+    "No favorite photos yet. Add some from the admin page.");
   finishSection("communityEmpty", buckets.community,
-    "No shared photos yet — be the first to add one of the best boy.");
+    "No shared photos yet. Be the first to add one of the best boy.");
   finishSection("artworkEmpty", buckets.artwork,
     "No artwork yet.");
 }
@@ -136,7 +136,7 @@ function renderSubmission(grid, sub, origin) {
   const altParts = [];
   if (sub.caption) altParts.push(sub.caption);
   if (sub.submitter) altParts.push(`shared by ${sub.submitter}`);
-  const alt = altParts.length ? `Swarley — ${altParts.join(", ")}` : "Swarley, shared by a friend";
+  const alt = altParts.length ? `Swarley: ${altParts.join(", ")}` : "Swarley, shared by a friend";
   const caption = [sub.caption, sub.submitter ? `— ${sub.submitter}` : ""].filter(Boolean).join(" ");
 
   const picture = document.createElement("picture");

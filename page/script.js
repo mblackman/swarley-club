@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const altParts = [];
                 if (sub.caption) altParts.push(sub.caption);
                 if (sub.submitter) altParts.push(`shared by ${sub.submitter}`);
-                const alt = altParts.length ? `Swarley — ${altParts.join(', ')}` : 'Swarley, shared by a friend';
+                const alt = altParts.length ? `Swarley: ${altParts.join(', ')}` : 'Swarley, shared by a friend';
                 allSwarleyPics.push({ src, alt, remote: true });
             });
         } catch (err) {

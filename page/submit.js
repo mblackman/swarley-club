@@ -119,7 +119,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const res = await fetch(`${apiBase}/submissions`, { method: "POST", body: data });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
-      setStatus("Thank you 💛 Your photo is waiting for approval and will appear in the gallery soon.", "ok");
+      setStatus("Thank you. Your photo is waiting for approval and will appear in the gallery soon.", "ok");
       form.reset();
       preview.style.display = "none";
       if (window.turnstile) window.turnstile.reset();

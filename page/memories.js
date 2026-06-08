@@ -50,7 +50,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
-      setStatus("Thank you 💛 Your memory is waiting for approval and will appear below soon.", "ok");
+      setStatus("Thank you. Your memory is waiting for approval and will appear below soon.", "ok");
       form.reset();
       if (window.turnstile) window.turnstile.reset();
     } catch (err) {
@@ -74,7 +74,7 @@ async function loadMemories() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const items = await res.json();
     if (!Array.isArray(items) || items.length === 0) {
-      if (empty) empty.textContent = "No memories yet — be the first to share one. 💛";
+      if (empty) empty.textContent = "No memories yet. Be the first to share one.";
       return;
     }
     if (empty) empty.style.display = "none";
